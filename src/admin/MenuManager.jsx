@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
-import { Plus, Edit, Trash2, Save, X, Upload, Star, Tag, AlertCircle } from 'lucide-react'
+import { Plus, Edit, Trash2, Save, X, Upload, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function MenuManager() {
@@ -31,12 +31,22 @@ export default function MenuManager() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [itemsRes, catsRes] = await Promise.all([
-        supabase.from('menu_items').select('*, categories(name)').order('category_id').order('name'),
-        supabase.from('menu_categories').select('*').order('order')
-      ])
-      if (itemsRes.data) setItems(itemsRes.data)
-      if (catsRes.data) setCategories(catsRes.data)
+      // Fetch categories separately
+      const { data: cats, error: catError } = await supabase
+        .from('menu_categories')
+        .select('*')
+        .order('order', { ascending: true })
+      if (catError) throw catError
+      setCategories(cats || [])
+
+      // Fetch all menu items (no nested select)
+      const { data: menuItems, error: itemsError } = await supabase
+        .from('menu_items')
+        .select('*')
+        .order('category_id')
+        .order('name')
+      if (itemsError) throw itemsError
+      setItems(menuItems || [])
     } catch (error) {
       console.error(error)
       toast.error('Failed to load menu')
@@ -81,7 +91,7 @@ export default function MenuManager() {
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${Date.now()}.${fileExt}`
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('menu-images')
         .upload(fileName, file)
       if (error) throw error
@@ -211,7 +221,7 @@ export default function MenuManager() {
         })}
       </div>
 
-      {/* Modal */}
+      {/* Modal – same as before, unchanged */}
       <AnimatePresence>
         {isModalOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">

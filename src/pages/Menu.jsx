@@ -36,21 +36,20 @@ export default function Menu() {
     setLoading(true)
     try {
       // Fetch categories
-      const { data: cats } = await supabase
+      const { data: cats, error: catError } = await supabase
         .from('menu_categories')
         .select('*')
         .order('order', { ascending: true })
+      if (catError) throw catError
       if (cats) setCategories(cats)
 
-      // Fetch menu items with category info
-      const { data: menuItems } = await supabase
+      // Fetch all menu items
+      const { data: menuItems, error: itemsError } = await supabase
         .from('menu_items')
-        .select(`
-          *,
-          categories:category_id (name)
-        `)
+        .select('*')
         .order('category_id')
         .order('name')
+      if (itemsError) throw itemsError
       if (menuItems) setItems(menuItems)
     } catch (error) {
       console.error('Error fetching menu:', error)
@@ -59,12 +58,18 @@ export default function Menu() {
     }
   }
 
+  // Helper: get category name by category_id
+  const getCategoryName = (categoryId) => {
+    const cat = categories.find(c => c.id === categoryId)
+    return cat ? cat.name : 'Other'
+  }
+
   const filterItems = () => {
     let filtered = items
 
     // Category filter
     if (activeCategory !== 'all') {
-      filtered = filtered.filter(item => item.categories?.name === activeCategory)
+      filtered = filtered.filter(item => getCategoryName(item.category_id) === activeCategory)
     }
 
     // Search query
@@ -72,7 +77,7 @@ export default function Menu() {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(item =>
         item.name.toLowerCase().includes(query) ||
-        item.description.toLowerCase().includes(query)
+        (item.description && item.description.toLowerCase().includes(query))
       )
     }
 
@@ -94,7 +99,7 @@ export default function Menu() {
 
   const filteredItems = filterItems()
   const groupedItems = filteredItems.reduce((acc, item) => {
-    const catName = item.categories?.name || 'Other'
+    const catName = getCategoryName(item.category_id)
     if (!acc[catName]) acc[catName] = []
     acc[catName].push(item)
     return acc
@@ -185,7 +190,7 @@ export default function Menu() {
         <div className="flex flex-wrap gap-2 mb-10 overflow-x-auto pb-2 hide-scrollbar">
           <button
             onClick={() => setActiveCategory('all')}
-            className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${activeCategory === 'all' ? 'bg-amber-600 text-white shadow-amber' : 'bg-white/5 text-smoke-300 hover:bg-white/10'}`}
+            className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${activeCategory === 'all' ? 'bg-amber-600 text-white shadow-lg' : 'bg-white/5 text-smoke-300 hover:bg-white/10'}`}
           >
             All
           </button>
@@ -195,7 +200,7 @@ export default function Menu() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.name)}
-                className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all ${activeCategory === cat.name ? 'bg-amber-600 text-white shadow-amber' : 'bg-white/5 text-smoke-300 hover:bg-white/10'}`}
+                className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all ${activeCategory === cat.name ? 'bg-amber-600 text-white shadow-lg' : 'bg-white/5 text-smoke-300 hover:bg-white/10'}`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 {cat.name}

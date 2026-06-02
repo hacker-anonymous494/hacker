@@ -5,7 +5,7 @@ import { useInView } from 'react-intersection-observer'
 import { supabase } from '@/lib/supabase'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Autoplay, Pagination, Navigation } from 'swiper/modules'
-import { Calendar, Music, Coffee, Wine, ArrowRight, Star, Phone, Mail, MapPin } from 'lucide-react'
+import { Calendar, Music, Coffee, Wine, ArrowRight, Star } from 'lucide-react'
 
 import 'swiper/css'
 import 'swiper/css/pagination'
@@ -30,30 +30,30 @@ export default function Home() {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Featured menu items (pizza & cocktails)
-      const { data: items } = await supabase
+      // Featured menu items (no nested select – we'll just get items)
+      const { data: items, error: itemsError } = await supabase
         .from('menu_items')
-        .select('*, categories(name)')
+        .select('*')
         .eq('featured', true)
         .limit(6)
-      if (items) setFeaturedItems(items)
+      if (!itemsError && items) setFeaturedItems(items)
 
       // Upcoming events
-      const { data: events } = await supabase
+      const { data: events, error: eventsError } = await supabase
         .from('events')
         .select('*')
         .gte('date', new Date().toISOString())
         .order('date', { ascending: true })
         .limit(3)
-      if (events) setUpcomingEvents(events)
+      if (!eventsError && events) setUpcomingEvents(events)
 
       // Gallery images
-      const { data: gallery } = await supabase
+      const { data: gallery, error: galleryError } = await supabase
         .from('gallery_images')
         .select('*')
         .order('order', { ascending: true })
         .limit(6)
-      if (gallery) setGalleryImages(gallery)
+      if (!galleryError && gallery) setGalleryImages(gallery)
     }
     fetchData()
   }, [])
@@ -63,18 +63,9 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-hero-gradient z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-smoke-950/70 via-smoke-950/50 to-smoke-950 z-10" />
           <div className="absolute inset-0 bg-noise opacity-30 z-20" />
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-            poster="/hero-poster.jpg"
-          >
-            <source src="/hero-video.mp4" type="video/mp4" />
-          </video>
+          <div className="absolute inset-0 bg-[url('https://placehold.co/1920x1080')] bg-cover bg-center z-0" />
         </div>
 
         <div className="relative z-30 container-custom text-center" ref={heroRef}>
@@ -132,9 +123,9 @@ export default function Home() {
                 transition={{ delay: idx * 0.1, duration: 0.5 }}
                 className="menu-card group"
               >
-                <div className="relative h-56 overflow-hidden">
+                <div className="relative h-56 overflow-hidden bg-smoke-800">
                   <img
-                    src={item.image_url || '/placeholder-food.jpg'}
+                    src={item.image_url || 'https://placehold.co/600x400?text=Veranda'}
                     alt={item.name}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     loading="lazy"
@@ -168,7 +159,7 @@ export default function Home() {
       </section>
 
       {/* Upcoming Events Carousel */}
-      <section className="section-py bg-radial-ember relative overflow-hidden">
+      <section className="section-py bg-radial-amber relative overflow-hidden">
         <div className="absolute inset-0 bg-smoke-950/60" />
         <div className="container-custom relative z-10">
           <div className="text-center mb-12">
@@ -192,8 +183,8 @@ export default function Home() {
           >
             {upcomingEvents.map((event) => (
               <SwiperSlide key={event.id}>
-                <div className="glass rounded-2xl overflow-hidden hover:shadow-amber transition-all duration-300">
-                  <img src={event.poster_url || '/event-placeholder.jpg'} alt={event.name} className="w-full h-48 object-cover" />
+                <div className="glass rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300">
+                  <img src={event.poster_url || 'https://placehold.co/400x300?text=Event'} alt={event.name} className="w-full h-48 object-cover" />
                   <div className="p-5">
                     <div className="flex items-center gap-2 text-amber-400 text-sm mb-2">
                       <Calendar className="w-4 h-4" />
@@ -280,7 +271,7 @@ export default function Home() {
                   transition={{ delay: idx * 0.05 }}
                   className="aspect-square overflow-hidden rounded-xl"
                 >
-                  <img src={img.image_url} alt={`Gallery ${idx}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
+                  <img src={img.image_url || 'https://placehold.co/400x400'} alt={`Gallery ${idx}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
                 </motion.div>
               ))}
             </div>
