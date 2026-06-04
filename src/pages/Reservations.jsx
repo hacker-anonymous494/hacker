@@ -25,6 +25,7 @@ export default function Reservations() {
   const [selectedTableIds, setSelectedTableIds] = useState([]);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paypalPaymentId, setPaypalPaymentId] = useState(null);
   const { items, getTotal, clearCart } = useOrderStore();
   const totalAmount = getTotal();
@@ -42,20 +43,35 @@ export default function Reservations() {
   const guests = watch('guests');
 
   const handlePayPalSuccess = (paymentDetails) => {
+    if (isProcessingPayment) return;
+    setIsProcessingPayment(true);
     setPaypalPaymentId(paymentDetails.paymentId);
     toast.success('Payment successful! Completing reservation...');
-    const form = document.getElementById('reservation-form');
-    if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+
+    const formData = {
+      name: watch('name'),
+      email: watch('email'),
+      phone: watch('phone'),
+      guests: watch('guests'),
+      date: watch('date'),
+      time: watch('time'),
+      notes: watch('notes'),
+    };
+    onSubmitReservation(formData, paymentDetails.paymentId);
   };
 
-  const onSubmitReservation = async (data) => {
+  const onSubmitReservation = async (data, directPaymentId = null) => {
+    const usedPaymentId = directPaymentId || paypalPaymentId;
+
     if (selectedTableIds.length === 0) {
       toast.error('Please select at least one table');
+      setIsProcessingPayment(false);
       return;
     }
 
-    if (totalAmount > 0 && !paypalPaymentId) {
+    if (totalAmount > 0 && !usedPaymentId) {
       toast.error('Please complete the payment first');
+      setIsProcessingPayment(false);
       return;
     }
 
@@ -72,7 +88,7 @@ export default function Reservations() {
           reservation_date: data.date,
           reservation_time: data.time,
           notes: data.notes || null,
-          status: paypalPaymentId ? 'confirmed' : 'pending',
+          status: usedPaymentId ? 'confirmed' : 'pending',
         }])
         .select()
         .single();
@@ -147,6 +163,7 @@ export default function Reservations() {
       toast.error('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
+      setIsProcessingPayment(false);
     }
   };
 
@@ -261,6 +278,7 @@ export default function Reservations() {
                       amount={totalAmount} 
                       onSuccess={handlePayPalSuccess} 
                       onError={(err) => toast.error(err.message || 'Payment failed')} 
+                      disabled={isProcessingPayment}
                     />
                   </div>
                 )}
@@ -268,8 +286,8 @@ export default function Reservations() {
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setStep(2)} className="btn-outline flex-1">Back</button>
                   {totalAmount === 0 && (
-                    <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                      {isSubmitting ? 'Processing...' : 'Complete Reservation (Pay at Venue)'}
+                    <button type="submit" disabled={isSubmitting || isProcessingPayment} className="btn-primary flex-1">
+                      {isSubmitting || isProcessingPayment ? 'Processing...' : 'Complete Reservation (Pay at Venue)'}
                     </button>
                   )}
                 </div>

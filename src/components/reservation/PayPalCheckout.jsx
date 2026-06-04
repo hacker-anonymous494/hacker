@@ -1,7 +1,7 @@
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { useEffect, useState } from 'react';
 
-export default function PayPalCheckout({ amount, onSuccess, onError }) {
+export default function PayPalCheckout({ amount, onSuccess, onError, disabled }) {
   const [clientId, setClientId] = useState(null);
   const [scriptError, setScriptError] = useState(false);
 
@@ -44,6 +44,7 @@ export default function PayPalCheckout({ amount, onSuccess, onError }) {
   };
 
   const onApprove = async (data) => {
+    if (disabled) return;
     try {
       const response = await fetch('/.netlify/functions/capture-paypal-order', {
         method: 'POST',
@@ -72,6 +73,7 @@ export default function PayPalCheckout({ amount, onSuccess, onError }) {
       }}
     >
       <PayPalButtons
+        disabled={disabled}
         style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay' }}
         createOrder={createOrder}
         onApprove={onApprove}
