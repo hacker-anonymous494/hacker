@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -29,7 +29,7 @@ export default function Reservations() {
   const [isGroupOrder, setIsGroupOrder] = useState(false);
   const [groupLink, setGroupLink] = useState('');
   const [groupSessionId, setGroupSessionId] = useState('');
-  const [sessionItems, setSessionItems] = useState([]);
+  const [groupItems, setGroupItems] = useState([]);
   const [groupTotal, setGroupTotal] = useState(0);
   const [paypalPaymentId, setPaypalPaymentId] = useState(null);
   const { items, getTotal, clearCart } = useOrderStore();
@@ -46,6 +46,56 @@ export default function Reservations() {
   const date = watch('date');
   const time = watch('time');
   const guests = watch('guests');
+
+  useEffect(() => {
+    if (!groupSessionId) return;
+
+    const fetchGroupItems = async () => {
+      const { data } = await supabase
+        .from('group_sessions')
+        .select('items')
+        .eq('id', groupSessionId)
+        .single();
+
+      if (data?.items) {
+        setGroupItems(data.items);
+        const total = data.items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
+        setGroupTotal(total);
+      }
+    };
+
+    fetchGroupItems();
+
+    const channel = supabase
+      .channel(`group-session-updates-${groupSessionId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'group_sessions',
+        filter: `id=eq.${groupSessionId}`,
+      }, (payload) => {
+        const newItems = payload.new.items || [];
+        setGroupItems(newItems);
+        const total = newItems.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
+        setGroupTotal(total);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [groupSessionId]);
+
+  useEffect(() => {
+    const handleGroupItemsLoaded = (event) => {
+      const cartItems = event.detail || [];
+      useOrderStore.setState({ items: cartItems });
+      sessionStorage.setItem('veranda_cart', JSON.stringify(cartItems));
+    };
+
+    window.addEventListener('groupItemsLoaded', handleGroupItemsLoaded);
+    return () => window.removeEventListener('groupItemsLoaded', handleGroupItemsLoaded);
+  }, []);
 
   const handlePayPalSuccess = (paymentDetails) => {
     if (isProcessingPayment) return;
@@ -346,9 +396,9 @@ export default function Reservations() {
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ hostEmail: watch('email'), reservationData }),
                         });
-                        const { link, id } = await res.json();
+                        const { link, sessionId } = await res.json();
                         setGroupLink(link);
-                        setGroupSessionId(id);
+                        setGroupSessionId(sessionId);
                         toast.success('Group link created! Share it with your friends.');
                         try {
                           await navigator.clipboard.writeText(link);
@@ -367,36 +417,51 @@ export default function Reservations() {
                 )}
 
                 {groupLink && (
-                  <div className="glass p-3 rounded-lg">
-                    <p>Share this link with your group:</p>
-                    <code className="block break-all text-sm">{groupLink}</code>
-                    <p className="text-xs text-smoke-400 mt-2">When everyone has added items, come back and click &quot;Pay for Group&quot;.</p>
+                  <div className="glass p-4 rounded-xl">
+                    <p className="mb-2">Share this link with your group:</p>
+                    <code className="block break-all text-sm bg-black/40 p-2 rounded">{groupLink}</code>
+                    <div className="mt-4">
+                      <h3 className="font-semibold">Combined Group Order:</h3>
+                      {groupItems.length === 0 ? (
+                        <p className="text-smoke-400 text-sm">No items added yet. Share the link!</p>
+                      ) : (
+                        <div className="space-y-1 max-h-60 overflow-y-auto mt-2">
+                          {groupItems.map((item, idx) => (
+                            <div key={idx} className="flex justify-between text-sm">
+                              <span>{item.name} x{item.quantity} ({item.guest_email})</span>
+                              <span>${(item.quantity * item.unit_price).toFixed(2)}</span>
+                            </div>
+                          ))}
+                          <div className="border-t pt-2 font-bold flex justify-between">
+                            <span>Total to pay</span>
+                            <span className="text-amber-400">${groupTotal.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <button
                       type="button"
-                      className="btn-primary mt-3 w-full"
                       onClick={async () => {
-                        try {
-                          const { data: groupSession, error: sessionError } = await supabase
-                            .from('group_sessions')
-                            .select('items')
-                            .eq('id', groupSessionId)
-                            .single();
-
-                          if (sessionError || !groupSession) {
-                            throw sessionError || new Error('Group session not found');
+                        const mergedMap = new Map();
+                        groupItems.forEach(i => {
+                          const existing = mergedMap.get(i.menu_item_id);
+                          if (existing) {
+                            existing.quantity += i.quantity;
+                          } else {
+                            mergedMap.set(i.menu_item_id, { ...i, quantity: i.quantity });
                           }
-
-                          const combinedItems = groupSession.items || [];
-                          const total = combinedItems.reduce((sum, item) => sum + (item.quantity || 0) * (item.unit_price || 0), 0);
-                          setSessionItems(combinedItems);
-                          setGroupTotal(total);
-                          sessionStorage.setItem('veranda_cart', JSON.stringify(combinedItems));
-                          toast.success('Group items loaded. Complete payment to finish the order.');
-                        } catch (err) {
-                          console.error('Failed to load group session', err);
-                          toast.error('Unable to load group items');
-                        }
+                        });
+                        const cartItems = Array.from(mergedMap.values()).map(i => ({
+                          id: i.menu_item_id,
+                          name: i.name,
+                          price: i.unit_price,
+                          quantity: i.quantity,
+                        }));
+                        useOrderStore.setState({ items: cartItems });
+                        window.dispatchEvent(new CustomEvent('groupItemsLoaded', { detail: cartItems }));
                       }}
+                      className="btn-primary mt-4 w-full"
+                      disabled={groupItems.length === 0}
                     >
                       Pay for Group (${groupTotal.toFixed(2)})
                     </button>

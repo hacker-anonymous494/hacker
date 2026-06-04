@@ -10,25 +10,24 @@ export default function JoinGroup() {
   const [menuItems, setMenuItems] = useState([]);
   const [guestEmail, setGuestEmail] = useState('');
   const [myItems, setMyItems] = useState([]);
+  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token) return;
     const fetchData = async () => {
-      // Get group session
       const { data, error } = await supabase
         .from('group_sessions')
         .select('*')
         .eq('token', token)
         .single();
       if (error) {
-        console.error('Failed to load group session:', error);
         toast.error('Invalid or expired group link');
         setLoading(false);
         return;
       }
       setSession(data);
-      // Load menu items
+      // Load menu
       const { data: menu } = await supabase.from('menu_items').select('*');
       setMenuItems(menu || []);
       setLoading(false);
@@ -38,18 +37,18 @@ export default function JoinGroup() {
 
   const addItemToSession = async (menuItem) => {
     if (!guestEmail) {
-      toast.error('Please enter your email first');
+      toast.error('Enter your email first');
       return;
     }
     // Update local cart
     const existing = myItems.find(i => i.menu_item_id === menuItem.id);
-    let newItems;
+    let newMyItems;
     if (existing) {
-      newItems = myItems.map(i =>
+      newMyItems = myItems.map(i =>
         i.menu_item_id === menuItem.id ? { ...i, quantity: i.quantity + 1 } : i
       );
     } else {
-      newItems = [...myItems, {
+      newMyItems = [...myItems, {
         guest_email: guestEmail,
         menu_item_id: menuItem.id,
         name: menuItem.name,
@@ -57,41 +56,76 @@ export default function JoinGroup() {
         unit_price: menuItem.price,
       }];
     }
-    setMyItems(newItems);
-    
-    // Persist to Supabase (update session.items)
-    const allItems = [...(session.items || []), ...newItems]; // simplified merge
+    setMyItems(newMyItems);
+  };
+
+  const removeItem = (menuItemId) => {
+    setMyItems(myItems.filter(i => i.menu_item_id !== menuItemId));
+  };
+
+  const updateQuantity = (menuItemId, delta) => {
+    setMyItems(myItems.map(i => {
+      if (i.menu_item_id === menuItemId) {
+        const newQty = i.quantity + delta;
+        return newQty > 0 ? { ...i, quantity: newQty } : null;
+      }
+      return i;
+    }).filter(Boolean));
+  };
+
+  const submitOrder = async () => {
+    if (myItems.length === 0) {
+      toast.error('No items to submit');
+      return;
+    }
+    // Merge my items into session.items (preserving other guests)
+    const currentItems = session.items || [];
+    // Remove previous items from this guest (if any)
+    const filtered = currentItems.filter(i => i.guest_email !== guestEmail);
+    const updatedItems = [...filtered, ...myItems];
     const { error } = await supabase
       .from('group_sessions')
-      .update({ items: allItems })
+      .update({ items: updatedItems })
       .eq('token', token);
-    if (error) toast.error('Failed to save item');
-    else toast.success(`Added ${menuItem.name}`);
+    if (error) {
+      toast.error('Failed to submit');
+    } else {
+      setSubmitted(true);
+      toast.success('Your order submitted! Host will see it.');
+    }
   };
 
   if (!token) return <div className="pt-28 text-center">No group token provided</div>;
   if (loading) return <div className="pt-28 text-center">Loading group session...</div>;
   if (!session) return <div className="pt-28 text-center">Group session not found or expired</div>;
 
+  if (submitted) {
+    return (
+      <div className="pt-28 text-center">
+        <h2 className="font-display text-2xl">Order Submitted!</h2>
+        <p className="text-smoke-300 mt-2">The host will now see your items and pay for the group.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pt-28 pb-16">
       <div className="container-custom max-w-5xl">
-        <h1 className="font-display text-3xl mb-2">Join {session.host_email}'s Group Order</h1>
-        <p className="text-smoke-400 mb-6">
-          {session.reservation_data.date} at {session.reservation_data.time} · {session.reservation_data.guests} guests
-        </p>
-        
-        <div className="glass p-4 rounded-xl mb-8">
-          <label className="block text-sm mb-1">Your email (to identify your items)</label>
+        <h1 className="font-display text-3xl">Join {session.host_email}'s Group</h1>
+        <p className="text-smoke-400 mb-6">{session.reservation_data.date} at {session.reservation_data.time}</p>
+
+        <div className="glass p-4 rounded-xl mb-6">
+          <label className="block text-sm mb-1">Your email</label>
           <input
             type="email"
             value={guestEmail}
             onChange={(e) => setGuestEmail(e.target.value)}
             className="w-full px-4 py-2 bg-white/5 rounded-lg"
             placeholder="you@example.com"
+            disabled={submitted}
           />
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <h2 className="font-heading text-xl mb-4">Menu</h2>
@@ -107,7 +141,7 @@ export default function JoinGroup() {
               ))}
             </div>
           </div>
-          
+
           <div>
             <h2 className="font-heading text-xl mb-4">Your Items</h2>
             {myItems.length === 0 ? (
@@ -115,11 +149,23 @@ export default function JoinGroup() {
             ) : (
               <div className="space-y-2">
                 {myItems.map(item => (
-                  <div key={item.menu_item_id} className="glass p-2 rounded-lg flex justify-between">
-                    <span>{item.name} x{item.quantity}</span>
+                  <div key={item.menu_item_id} className="glass p-2 rounded-lg flex justify-between items-center">
+                    <div>
+                      <span>{item.name} x{item.quantity}</span>
+                      <div className="flex gap-2 mt-1">
+                        <button onClick={() => updateQuantity(item.menu_item_id, -1)} className="text-xs text-red-400">-</button>
+                        <button onClick={() => updateQuantity(item.menu_item_id, 1)} className="text-xs text-green-400">+</button>
+                        <button onClick={() => removeItem(item.menu_item_id)} className="text-xs text-gray-400">Remove</button>
+                      </div>
+                    </div>
                     <span className="text-amber-400">${(item.quantity * item.unit_price).toFixed(2)}</span>
                   </div>
                 ))}
+                <div className="pt-2 font-bold flex justify-between">
+                  <span>Your total</span>
+                  <span className="text-amber-400">${myItems.reduce((s, i) => s + i.quantity * i.unit_price, 0).toFixed(2)}</span>
+                </div>
+                <button onClick={submitOrder} className="btn-primary w-full mt-4">Submit My Order</button>
               </div>
             )}
           </div>
