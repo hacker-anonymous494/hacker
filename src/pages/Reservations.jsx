@@ -26,6 +26,7 @@ export default function Reservations() {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isGroupOrder, setIsGroupOrder] = useState(false);
   const [paypalPaymentId, setPaypalPaymentId] = useState(null);
   const { items, getTotal, clearCart } = useOrderStore();
   const totalAmount = getTotal();
@@ -86,7 +87,7 @@ export default function Reservations() {
     }
 
     // Save cart to sessionStorage before async operations
-    sessionStorage.setItem('veranda_cart', JSON.stringify(items));
+    sessionStorage.setItem('veranda_cart', JSON.stringify(cartItems));
 
     setIsSubmitting(true);
     try {
@@ -157,6 +158,26 @@ export default function Reservations() {
         // 6. Clear cart only after success
         clearCart();
         sessionStorage.removeItem('veranda_cart');
+
+        if (isGroupOrder && order) {
+          try {
+            const res = await fetch('/.netlify/functions/create-group-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: order.id, hostEmail: data.email }),
+            });
+            const { link } = await res.json();
+            toast.success(`Share this link with your group: ${link}`);
+            try {
+              await navigator.clipboard.writeText(link);
+            } catch (clipboardErr) {
+              console.warn('Clipboard copy failed', clipboardErr);
+            }
+          } catch (groupErr) {
+            console.error('Group order token creation failed:', groupErr);
+            toast.error('Group order link could not be created');
+          }
+        }
       }
 
       // 7. Send email notification (optional)
@@ -290,6 +311,16 @@ export default function Reservations() {
                   )}
                 </div>
 
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    type="checkbox"
+                    id="groupOrder"
+                    checked={isGroupOrder}
+                    onChange={(e) => setIsGroupOrder(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="groupOrder">This is a group order – I will invite others to add items</label>
+                </div>
                 {totalAmount > 0 && (
                   <div className="border-t border-white/10 pt-4">
                     <label className="block text-sm font-body mb-3 text-smoke-200">Pay with PayPal</label>

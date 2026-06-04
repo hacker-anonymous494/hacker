@@ -16,6 +16,7 @@ const Pizza      = lazy(() => import('@/pages/Pizza'))
 const Events     = lazy(() => import('@/pages/Events'))
 const Gallery    = lazy(() => import('@/pages/Gallery'))
 const Reservations = lazy(() => import('@/pages/Reservations'))
+const JoinGroup   = lazy(() => import('@/pages/JoinGroup'))
 const About      = lazy(() => import('@/pages/About'))
 const Contact    = lazy(() => import('@/pages/Contact'))
 const AdminLogin = lazy(() => import('@/pages/AdminLogin'))
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="events" element={<Events />} />
             <Route path="gallery" element={<Gallery />} />
             <Route path="reservations" element={<Reservations />} />
+            <Route path="join" element={<JoinGroup />} />
             <Route path="about" element={<About />} />
             <Route path="contact" element={<Contact />} />
           </Route>
