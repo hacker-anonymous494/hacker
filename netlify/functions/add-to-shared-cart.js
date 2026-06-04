@@ -5,74 +5,51 @@ exports.handler = async (event) => {
 
   try {
     const { token, item, quantity, guestEmail } = JSON.parse(event.body);
-    if (!token || !item || !quantity) {
+    if (!token || !item || !quantity || !guestEmail) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing required fields' }) };
     }
 
     const { createClient } = require('@supabase/supabase-js');
     const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
 
-    // Find the order by token
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .select('id')
-      .eq('group_token', token)
+    // Find the group session by token
+    const { data: session, error: sessionError } = await supabase
+      .from('group_sessions')
+      .select('*')
+      .eq('token', token)
       .single();
 
-    if (orderError || !order) {
+    if (sessionError || !session) {
       return { statusCode: 404, body: JSON.stringify({ error: 'Invalid or expired token' }) };
     }
 
-    // Check if this guest already has a contributor record
-    let { data: contributor, error: contribError } = await supabase
-      .from('order_contributors')
-      .select('*')
-      .eq('order_id', order.id)
-      .eq('guest_email', guestEmail)
-      .maybeSingle();
+    const sessionItems = Array.isArray(session.items) ? [...session.items] : [];
+    const existingIndex = sessionItems.findIndex(
+      (i) => i.guest_email === guestEmail && i.menu_item_id === item.id
+    );
 
-    let updatedItems = [];
-    if (contributor) {
-      // Update existing contributor's items
-      updatedItems = contributor.items;
-      const existingIndex = updatedItems.findIndex(i => i.menu_item_id === item.id);
-      if (existingIndex >= 0) {
-        updatedItems[existingIndex].quantity += quantity;
-      } else {
-        updatedItems.push({
-          menu_item_id: item.id,
-          name: item.name,
-          quantity,
-          unit_price: item.price,
-        });
-      }
-      const { error: updateError } = await supabase
-        .from('order_contributors')
-        .update({ items: updatedItems })
-        .eq('id', contributor.id);
-      if (updateError) throw updateError;
+    if (existingIndex >= 0) {
+      sessionItems[existingIndex].quantity += quantity;
     } else {
-      // Create new contributor
-      updatedItems = [{
+      sessionItems.push({
+        guest_email: guestEmail,
         menu_item_id: item.id,
         name: item.name,
         quantity,
         unit_price: item.price,
-      }];
-      const { error: insertError } = await supabase
-        .from('order_contributors')
-        .insert([{
-          order_id: order.id,
-          guest_email: guestEmail,
-          token_used: token,
-          items: updatedItems,
-        }]);
-      if (insertError) throw insertError;
+      });
     }
+
+    const { error: updateError } = await supabase
+      .from('group_sessions')
+      .update({ items: sessionItems })
+      .eq('id', session.id);
+
+    if (updateError) throw updateError;
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: true, items: updatedItems }),
+      body: JSON.stringify({ success: true, items: sessionItems }),
     };
   } catch (error) {
     console.error(error);

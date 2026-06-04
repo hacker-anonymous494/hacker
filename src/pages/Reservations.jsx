@@ -27,6 +27,10 @@ export default function Reservations() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isGroupOrder, setIsGroupOrder] = useState(false);
+  const [groupLink, setGroupLink] = useState('');
+  const [sessionToken, setSessionToken] = useState('');
+  const [sessionItems, setSessionItems] = useState([]);
+  const [groupTotal, setGroupTotal] = useState(0);
   const [paypalPaymentId, setPaypalPaymentId] = useState(null);
   const { items, getTotal, clearCart } = useOrderStore();
   const totalAmount = getTotal();
@@ -63,6 +67,7 @@ export default function Reservations() {
 
   const onSubmitReservation = async (data, directPaymentId = null) => {
     const usedPaymentId = directPaymentId || paypalPaymentId;
+    const orderTotal = isGroupOrder && groupLink ? groupTotal : totalAmount;
 
     // Retrieve cart items from sessionStorage if not available in state
     let cartItems = items;
@@ -80,7 +85,7 @@ export default function Reservations() {
       return;
     }
 
-    if (totalAmount > 0 && !usedPaymentId) {
+    if (orderTotal > 0 && !usedPaymentId) {
       toast.error('Please complete the payment first');
       setIsProcessingPayment(false);
       return;
@@ -131,7 +136,7 @@ export default function Reservations() {
           .insert([{
             reservation_id: reservation.id,
             user_email: data.email,
-            total_amount: totalAmount,
+            total_amount: orderTotal,
             paypal_order_id: usedPaymentId || null,
             stripe_payment_intent_id: null,
             status: usedPaymentId ? 'paid' : 'pending',
@@ -188,7 +193,7 @@ export default function Reservations() {
           body: JSON.stringify({
             ...data,
             tables: selectedTableIds,
-            orderTotal: totalAmount,
+            orderTotal,
             orderItems: cartItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
           }),
         });
@@ -321,13 +326,90 @@ export default function Reservations() {
                   />
                   <label htmlFor="groupOrder">This is a group order – I will invite others to add items</label>
                 </div>
-                {totalAmount > 0 && (
+
+                {isGroupOrder && !groupLink && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const reservationData = {
+                        date: watch('date'),
+                        time: watch('time'),
+                        guests: watch('guests'),
+                        tables: selectedTableIds,
+                        name: watch('name'),
+                        email: watch('email'),
+                        phone: watch('phone'),
+                      };
+                      try {
+                        const res = await fetch('/.netlify/functions/create-group-session', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ hostEmail: watch('email'), reservationData }),
+                        });
+                        const { link, token } = await res.json();
+                        setGroupLink(link);
+                        setSessionToken(token);
+                        toast.success(`Share this link with your group: ${link}`);
+                        try {
+                          await navigator.clipboard.writeText(link);
+                        } catch (clipboardErr) {
+                          console.warn('Clipboard copy failed', clipboardErr);
+                        }
+                      } catch (err) {
+                        console.error('Group link creation failed', err);
+                        toast.error('Could not create group link');
+                      }
+                    }}
+                    className="btn-primary"
+                  >
+                    Generate Group Link
+                  </button>
+                )}
+
+                {groupLink && (
+                  <div className="glass p-3 rounded-lg">
+                    <p>Share this link with your group:</p>
+                    <code className="block break-all text-sm">{groupLink}</code>
+                    <p className="text-xs text-smoke-400 mt-2">When everyone has added items, come back and click &quot;Pay for Group&quot;.</p>
+                    <button
+                      type="button"
+                      className="btn-primary mt-3"
+                      onClick={async () => {
+                        try {
+                          const { data: groupSession, error: sessionError } = await supabase
+                            .from('group_sessions')
+                            .select('items')
+                            .eq('token', sessionToken)
+                            .single();
+
+                          if (sessionError || !groupSession) {
+                            throw sessionError || new Error('Group session not found');
+                          }
+
+                          const combinedItems = groupSession.items || [];
+                          const total = combinedItems.reduce((sum, item) => sum + (item.quantity || 0) * (item.unit_price || 0), 0);
+                          setSessionItems(combinedItems);
+                          setGroupTotal(total);
+                          sessionStorage.setItem('veranda_cart', JSON.stringify(combinedItems));
+                          toast.success('Group items loaded. Complete payment to finish the order.');
+                        } catch (err) {
+                          console.error('Failed to load group session', err);
+                          toast.error('Unable to load group items');
+                        }
+                      }}
+                    >
+                      Pay for Group
+                    </button>
+                  </div>
+                )}
+
+                {(!isGroupOrder || (isGroupOrder && groupLink && groupTotal > 0)) && (
                   <div className="border-t border-white/10 pt-4">
                     <label className="block text-sm font-body mb-3 text-smoke-200">Pay with PayPal</label>
-                    <PayPalCheckout 
-                      amount={totalAmount} 
-                      onSuccess={handlePayPalSuccess} 
-                      onError={(err) => toast.error(err.message || 'Payment failed')} 
+                    <PayPalCheckout
+                      amount={isGroupOrder ? groupTotal : totalAmount}
+                      onSuccess={handlePayPalSuccess}
+                      onError={(err) => toast.error(err.message || 'Payment failed')}
                       disabled={isProcessingPayment}
                     />
                   </div>

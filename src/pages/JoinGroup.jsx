@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { ShoppingBag, Plus, Minus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 export default function JoinGroup() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  const [order, setOrder] = useState(null);
+  const [session, setSession] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [guestItems, setGuestItems] = useState([]);
   const [guestEmail, setGuestEmail] = useState('');
@@ -17,13 +17,14 @@ export default function JoinGroup() {
   useEffect(() => {
     if (!token) return;
     const fetchData = async () => {
-      // Fetch order details
-      const { data: orderData } = await supabase
-        .from('orders')
-        .select('id, host_email, reservation_id')
-        .eq('group_token', token)
+      // Fetch group session details
+      const { data: sessionData } = await supabase
+        .from('group_sessions')
+        .select('id, host_email, reservation_data, items')
+        .eq('token', token)
         .single();
-      setOrder(orderData);
+      setSession(sessionData);
+      setGuestItems(sessionData?.items || []);
 
       // Fetch menu items
       const { data: items } = await supabase.from('menu_items').select('*');
@@ -63,12 +64,12 @@ export default function JoinGroup() {
 
   if (!token) return <div className="pt-28 text-center">Invalid group link</div>;
   if (loading) return <div className="pt-28 text-center">Loading group order...</div>;
-  if (!order) return <div className="pt-28 text-center">Group order not found or expired</div>;
+  if (!session) return <div className="pt-28 text-center">Group order not found or expired</div>;
 
   return (
     <div className="min-h-screen pt-28 pb-16">
       <div className="container-custom max-w-5xl">
-        <h1 className="font-display text-3xl mb-2">Join {order.host_email}'s Group Order</h1>
+        <h1 className="font-display text-3xl mb-2">Join {session.host_email}'s Group Order</h1>
         <p className="text-smoke-400 mb-6">Add your items – the host will pay once.</p>
 
         {!emailSubmitted ? (
@@ -112,7 +113,7 @@ export default function JoinGroup() {
                 ) : (
                   <div className="space-y-3">
                     {guestItems.map((item) => (
-                      <div key={item.menu_item_id} className="glass p-3 rounded-xl">
+                      <div key={item.menu_item_id + '-' + item.guest_email} className="glass p-3 rounded-xl">
                         <div className="flex justify-between">
                           <span>{item.name}</span>
                           <span>${(item.quantity * item.unit_price).toFixed(2)}</span>
