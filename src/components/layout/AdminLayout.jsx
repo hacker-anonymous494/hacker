@@ -7,6 +7,7 @@ import {
   BookOpen, 
   Image, 
   FileText, 
+  LayoutGrid,
   LogOut,
   Flame
 } from 'lucide-react'
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/admin/events', icon: Calendar, label: 'Events' },
   { to: '/admin/reservations', icon: BookOpen, label: 'Reservations' },
   { to: '/admin/gallery', icon: Image, label: 'Gallery' },
+  { to: '/admin/tables', icon: LayoutGrid, label: 'Tables' },
   { to: '/admin/content', icon: FileText, label: 'Content' },
 ]
 

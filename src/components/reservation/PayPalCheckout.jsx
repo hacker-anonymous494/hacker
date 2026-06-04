@@ -1,33 +1,40 @@
-// src/components/reservation/PayPalCheckout.jsx
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
+import { useEffect, useState } from 'react';
 
 export default function PayPalCheckout({ amount, onSuccess, onError }) {
-  // Don't render the button if there's no amount to pay
-  if (!amount || amount <= 0) {
-    return null;
+  const [clientId, setClientId] = useState(null);
+  const [scriptError, setScriptError] = useState(false);
+
+  useEffect(() => {
+    const id = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+    console.log('PayPal Client ID available?', id ? 'Yes (length: ' + id.length + ')' : 'No');
+    if (!id || id === 'undefined' || id === 'null' || id.startsWith('{{')) {
+      console.error('PayPal Client ID is missing or invalid.');
+      setScriptError(true);
+    } else {
+      setClientId(id);
+    }
+  }, []);
+
+  if (!amount || amount <= 0) return null;
+
+  if (scriptError || !clientId) {
+    return (
+      <div className="text-red-400 text-sm p-3 bg-red-500/10 rounded-lg text-center">
+        ⚠️ PayPal payment is temporarily unavailable. Please complete your reservation and pay at the venue.
+      </div>
+    );
   }
 
-  // Function to create the order by calling our serverless function
   const createOrder = async () => {
     try {
       const response = await fetch('/.netlify/functions/create-paypal-order', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: amount,
-          currency_code: 'USD',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, currency_code: 'USD' }),
       });
-
       const orderData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(orderData.error || 'Could not create order');
-      }
-
-      // Return the order ID to the PayPal button
+      if (!response.ok) throw new Error(orderData.error || 'Could not create order');
       return orderData.orderId;
     } catch (error) {
       console.error('Failed to create PayPal order:', error);
@@ -36,26 +43,15 @@ export default function PayPalCheckout({ amount, onSuccess, onError }) {
     }
   };
 
-  // Function to capture the payment after customer approves
   const onApprove = async (data) => {
     try {
       const response = await fetch('/.netlify/functions/capture-paypal-order', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderId: data.orderID,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: data.orderID }),
       });
-
       const captureData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(captureData.error || 'Could not capture payment');
-      }
-
-      // Payment successful, call the onSuccess callback with capture details
+      if (!response.ok) throw new Error(captureData.error || 'Could not capture payment');
       onSuccess?.({
         paymentId: captureData.captureId,
         orderId: captureData.orderId,
@@ -70,7 +66,7 @@ export default function PayPalCheckout({ amount, onSuccess, onError }) {
   return (
     <PayPalScriptProvider
       options={{
-        'client-id': import.meta.env.VITE_PAYPAL_CLIENT_ID,
+        'client-id': clientId,
         currency: 'USD',
         intent: 'capture',
       }}
@@ -83,10 +79,7 @@ export default function PayPalCheckout({ amount, onSuccess, onError }) {
           console.error('PayPal Button Error:', err);
           onError?.(err);
         }}
-        onCancel={() => {
-          console.log('Payment cancelled by user');
-          onError?.(new Error('Payment was cancelled'));
-        }}
+        onCancel={() => onError?.(new Error('Payment was cancelled'))}
       />
     </PayPalScriptProvider>
   );

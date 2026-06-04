@@ -1,58 +1,39 @@
 exports.handler = async (event) => {
-  if (event.httpMethod !== 'GET') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
-  }
-
+  if (event.httpMethod !== 'GET') return { statusCode: 405, body: 'Method Not Allowed' };
   const { date, time } = event.queryStringParameters;
-  if (!date || !time) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Missing date or time' }) };
-  }
+  if (!date || !time) return { statusCode: 400, body: JSON.stringify({ error: 'Missing date or time' }) };
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL;
-  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
   const { createClient } = require('@supabase/supabase-js');
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
 
-  // Fetch all tables
-  const { data: tables, error: tablesError } = await supabase
-    .from('tables')
-    .select('*')
-    .order('order', { ascending: true });
+  // Get all tables
+  const { data: allTables, error: tablesError } = await supabase.from('tables').select('*').order('order');
+  if (tablesError) return { statusCode: 500, body: JSON.stringify({ error: tablesError.message }) };
 
-  if (tablesError) {
-    return { statusCode: 500, body: JSON.stringify({ error: tablesError.message }) };
-  }
-
-  // Fetch reservations for that date/time (within 2-hour window)
-  const startTime = time;
-  const endTime = `${parseInt(time.split(':')[0]) + 2}:${time.split(':')[1]}`;
-
+  // Get confirmed reservations for that date
   const { data: reservations, error: resError } = await supabase
     .from('reservations')
-    .select(`
-      id,
-      reservation_date,
-      reservation_time,
-      reservation_tables (table_id)
-    `)
+    .select('id')
     .eq('reservation_date', date)
-    .gte('reservation_time', startTime)
-    .lt('reservation_time', endTime)
-    .not('status', 'eq', 'cancelled');
+    .eq('status', 'confirmed');
+  if (resError) return { statusCode: 500, body: JSON.stringify({ error: resError.message }) };
 
-  if (resError) {
-    return { statusCode: 500, body: JSON.stringify({ error: resError.message }) };
+  // Find taken table IDs
+  let takenTableIds = new Set();
+  if (reservations && reservations.length > 0) {
+    const reservationIds = reservations.map(r => r.id);
+    const { data: taken, error: rtError } = await supabase
+      .from('reservation_tables')
+      .select('table_id')
+      .in('reservation_id', reservationIds);
+    if (!rtError && taken) taken.forEach(t => takenTableIds.add(t.table_id));
   }
 
-  const bookedTableIds = new Set();
-  reservations.forEach(res => {
-    res.reservation_tables?.forEach(rt => bookedTableIds.add(rt.table_id));
-  });
-
-  const availableTables = tables.filter(t => !bookedTableIds.has(t.id));
+  // Filter: not taken AND not temporarily unavailable
+  const available = allTables.filter(t => !takenTableIds.has(t.id) && !t.is_temporarily_unavailable);
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ available: availableTables, all: tables }),
+    body: JSON.stringify({ available, all: allTables }),
   };
 };

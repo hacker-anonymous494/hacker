@@ -6,6 +6,7 @@ import Layout from '@/components/layout/Layout'
 import AdminLayout from '@/components/layout/AdminLayout'
 import ProtectedRoute from '@/components/layout/ProtectedRoute'
 import PageLoader from '@/components/ui/PageLoader'
+import TableManager from '@/admin/TableManager'
 
 // Lazy-loaded pages
 const Home       = lazy(() => import('@/pages/Home'))
@@ -69,6 +70,7 @@ export default function App() {
               <Route path="admin/reservations" element={<AdminReservations />} />
               <Route path="admin/gallery" element={<AdminGallery />} />
               <Route path="admin/content" element={<AdminContent />} />
+              <Route path="admin/tables" element={<TableManager />} />
             </Route>
           </Route>
         </Routes>
