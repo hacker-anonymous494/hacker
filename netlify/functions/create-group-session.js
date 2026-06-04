@@ -14,5 +14,5 @@ exports.handler = async (event) => {
   
   if (error) return { statusCode: 500, body: JSON.stringify({ error }) };
   const link = `https://verandacafe.netlify.app/join?token=${token}`;
-  return { statusCode: 200, body: JSON.stringify({ token, link }) };
+  return { statusCode: 200, body: JSON.stringify({ id: data.id, token, link }) };
 };

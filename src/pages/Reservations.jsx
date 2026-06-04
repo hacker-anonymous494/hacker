@@ -28,7 +28,7 @@ export default function Reservations() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isGroupOrder, setIsGroupOrder] = useState(false);
   const [groupLink, setGroupLink] = useState('');
-  const [sessionToken, setSessionToken] = useState('');
+  const [groupSessionId, setGroupSessionId] = useState('');
   const [sessionItems, setSessionItems] = useState([]);
   const [groupTotal, setGroupTotal] = useState(0);
   const [paypalPaymentId, setPaypalPaymentId] = useState(null);
@@ -346,10 +346,10 @@ export default function Reservations() {
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ hostEmail: watch('email'), reservationData }),
                         });
-                        const { link, token } = await res.json();
+                        const { link, id } = await res.json();
                         setGroupLink(link);
-                        setSessionToken(token);
-                        toast.success(`Share this link with your group: ${link}`);
+                        setGroupSessionId(id);
+                        toast.success('Group link created! Share it with your friends.');
                         try {
                           await navigator.clipboard.writeText(link);
                         } catch (clipboardErr) {
@@ -360,7 +360,7 @@ export default function Reservations() {
                         toast.error('Could not create group link');
                       }
                     }}
-                    className="btn-primary"
+                    className="btn-primary w-full"
                   >
                     Generate Group Link
                   </button>
@@ -373,13 +373,13 @@ export default function Reservations() {
                     <p className="text-xs text-smoke-400 mt-2">When everyone has added items, come back and click &quot;Pay for Group&quot;.</p>
                     <button
                       type="button"
-                      className="btn-primary mt-3"
+                      className="btn-primary mt-3 w-full"
                       onClick={async () => {
                         try {
                           const { data: groupSession, error: sessionError } = await supabase
                             .from('group_sessions')
                             .select('items')
-                            .eq('token', sessionToken)
+                            .eq('id', groupSessionId)
                             .single();
 
                           if (sessionError || !groupSession) {
@@ -398,7 +398,7 @@ export default function Reservations() {
                         }
                       }}
                     >
-                      Pay for Group
+                      Pay for Group (${groupTotal.toFixed(2)})
                     </button>
                   </div>
                 )}
