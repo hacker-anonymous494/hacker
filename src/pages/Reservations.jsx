@@ -3,18 +3,17 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { CalendarIcon, Clock, Users, User, Phone, Mail, ShoppingBag, CreditCard } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
 import TableSelector from '@/components/reservation/TableSelector';
 import OrderModal from '@/components/reservation/OrderModal';
-import StripePayment from '@/components/reservation/StripePayment';
+import PayPalCheckout from '@/components/reservation/PayPalCheckout';
 import { useOrderStore } from '@/store/orderStore';
 
 const reservationSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  phone: z.string().min(10),
+  name: z.string().min(2, 'Name is required'),
+  email: z.string().email('Valid email required'),
+  phone: z.string().min(10, 'Valid phone required'),
   guests: z.number().min(1).max(20),
   date: z.string().min(1),
   time: z.string().min(1),
@@ -26,26 +25,44 @@ export default function Reservations() {
   const [selectedTableIds, setSelectedTableIds] = useState([]);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentIntentId, setPaymentIntentId] = useState(null);
+  const [paypalPaymentId, setPaypalPaymentId] = useState(null);
   const { items, getTotal, clearCart } = useOrderStore();
   const totalAmount = getTotal();
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: zodResolver(reservationSchema),
-    defaultValues: { guests: 2, date: new Date().toISOString().split('T')[0], time: '19:00' }
+    defaultValues: {
+      guests: 2,
+      date: new Date().toISOString().split('T')[0],
+      time: '19:00'
+    }
   });
   const date = watch('date');
   const time = watch('time');
   const guests = watch('guests');
+
+  const handlePayPalSuccess = (paymentDetails) => {
+    setPaypalPaymentId(paymentDetails.paymentId);
+    toast.success('Payment successful! Completing reservation...');
+    // Trigger form submission after short delay
+    setTimeout(() => {
+      const form = document.getElementById('reservation-form');
+      if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    }, 500);
+  };
 
   const onSubmitReservation = async (data) => {
     if (selectedTableIds.length === 0) {
       toast.error('Please select at least one table');
       return;
     }
+    if (totalAmount > 0 && !paypalPaymentId) {
+      toast.error('Please complete the payment first');
+      return;
+    }
     setIsSubmitting(true);
     try {
-      // 1. Insert reservation
+      // Insert reservation
       const { data: reservation, error: resError } = await supabase
         .from('reservations')
         .insert([{
@@ -56,13 +73,13 @@ export default function Reservations() {
           reservation_date: data.date,
           reservation_time: data.time,
           notes: data.notes || null,
-          status: paymentIntentId ? 'confirmed' : 'pending',
+          status: paypalPaymentId ? 'confirmed' : 'pending',
         }])
         .select()
         .single();
       if (resError) throw resError;
 
-      // 2. Link tables
+      // Link tables
       const tableLinks = selectedTableIds.map(tableId => ({
         reservation_id: reservation.id,
         table_id: tableId,
@@ -70,15 +87,15 @@ export default function Reservations() {
       const { error: linkError } = await supabase.from('reservation_tables').insert(tableLinks);
       if (linkError) throw linkError;
 
-      // 3. If order exists, create order and order_items
-      if (items.length > 0 && paymentIntentId) {
+      // If order exists and paid via PayPal
+      if (items.length > 0 && paypalPaymentId) {
         const { data: order, error: orderError } = await supabase
           .from('orders')
           .insert([{
             reservation_id: reservation.id,
             user_email: data.email,
             total_amount: totalAmount,
-            stripe_payment_intent_id: paymentIntentId,
+            paypal_order_id: paypalPaymentId,
             status: 'paid',
           }])
           .select()
@@ -96,7 +113,7 @@ export default function Reservations() {
         clearCart();
       }
 
-      // 4. Send email via Netlify function
+      // Send email notification
       await fetch('/.netlify/functions/send-reservation-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -104,20 +121,13 @@ export default function Reservations() {
       });
 
       toast.success('Reservation confirmed! Check your email.');
-      setStep(4); // success step
+      setStep(4);
     } catch (error) {
       console.error(error);
       toast.error('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handlePaymentSuccess = (intentId) => {
-    setPaymentIntentId(intentId);
-    toast.success('Payment successful! Completing reservation...');
-    // Continue to submit reservation with payment flag
-    document.getElementById('reservation-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -134,7 +144,6 @@ export default function Reservations() {
         </div>
 
         <div className="glass rounded-2xl p-6 md:p-8">
-          {/* Steps indicator */}
           <div className="flex justify-between mb-8">
             {[1, 2, 3].map(s => (
               <div key={s} className={`flex-1 text-center pb-2 border-b-2 ${step >= s ? 'border-amber-500 text-amber-400' : 'border-white/10 text-smoke-500'}`}>
@@ -147,16 +156,43 @@ export default function Reservations() {
             {step === 1 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div><label>Name *</label><input {...register('name')} className="w-full px-4 py-2 bg-white/5 rounded-xl" /></div>
-                  <div><label>Email *</label><input {...register('email')} className="w-full px-4 py-2 bg-white/5 rounded-xl" /></div>
-                  <div><label>Phone *</label><input {...register('phone')} className="w-full px-4 py-2 bg-white/5 rounded-xl" /></div>
-                  <div><label>Guests *</label><input type="number" {...register('guests', { valueAsNumber: true })} className="w-full px-4 py-2 bg-white/5 rounded-xl" /></div>
-                  <div><label>Date *</label><input type="date" {...register('date')} min={today} max={maxDateStr} className="w-full px-4 py-2 bg-white/5 rounded-xl" /></div>
-                  <div><label>Time *</label><select {...register('time')} className="w-full px-4 py-2 bg-white/5 rounded-xl">
-                    {['17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'].map(t => <option key={t}>{t}</option>)}
-                  </select></div>
+                  <div>
+                    <label className="block text-sm mb-1">Name *</label>
+                    <input {...register('name')} className="w-full px-4 py-2 bg-white/5 rounded-xl" />
+                    {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Email *</label>
+                    <input {...register('email')} className="w-full px-4 py-2 bg-white/5 rounded-xl" />
+                    {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Phone *</label>
+                    <input {...register('phone')} className="w-full px-4 py-2 bg-white/5 rounded-xl" />
+                    {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Guests *</label>
+                    <input type="number" {...register('guests', { valueAsNumber: true })} className="w-full px-4 py-2 bg-white/5 rounded-xl" />
+                    {errors.guests && <p className="text-red-400 text-xs mt-1">{errors.guests.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Date *</label>
+                    <input type="date" {...register('date')} min={today} max={maxDateStr} className="w-full px-4 py-2 bg-white/5 rounded-xl" />
+                    {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Time *</label>
+                    <select {...register('time')} className="w-full px-4 py-2 bg-white/5 rounded-xl">
+                      {['17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'].map(t => <option key={t}>{t}</option>)}
+                    </select>
+                    {errors.time && <p className="text-red-400 text-xs mt-1">{errors.time.message}</p>}
+                  </div>
                 </div>
-                <div><label>Special requests</label><textarea {...register('notes')} rows="2" className="w-full px-4 py-2 bg-white/5 rounded-xl" /></div>
+                <div>
+                  <label className="block text-sm mb-1">Special requests</label>
+                  <textarea {...register('notes')} rows="2" className="w-full px-4 py-2 bg-white/5 rounded-xl" />
+                </div>
                 <button type="button" onClick={() => setStep(2)} className="btn-primary w-full">Continue to Table Selection</button>
               </motion.div>
             )}
@@ -176,7 +212,9 @@ export default function Reservations() {
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-heading text-xl">Your Order</h3>
-                    <button type="button" onClick={() => setShowOrderModal(true)} className="flex items-center gap-1 text-amber-400 text-sm"><ShoppingBag className="w-4 h-4" /> Add items</button>
+                    <button type="button" onClick={() => setShowOrderModal(true)} className="flex items-center gap-1 text-amber-400 text-sm">
+                      Add items
+                    </button>
                   </div>
                   {items.length === 0 ? (
                     <p className="text-smoke-400 text-center py-4">No items added yet. Click "Add items" to pre-order.</p>
@@ -189,7 +227,8 @@ export default function Reservations() {
                         </div>
                       ))}
                       <div className="border-t border-white/10 pt-2 font-bold flex justify-between">
-                        <span>Total</span><span className="text-amber-400">${totalAmount.toFixed(2)}</span>
+                        <span>Total</span>
+                        <span className="text-amber-400">${totalAmount.toFixed(2)}</span>
                       </div>
                     </div>
                   )}
@@ -197,8 +236,12 @@ export default function Reservations() {
 
                 {totalAmount > 0 && (
                   <div className="border-t border-white/10 pt-4">
-                    <label className="flex items-center gap-2 mb-3"><CreditCard className="w-4 h-4" /> Card Payment</label>
-                    <StripePayment amount={totalAmount} onSuccess={handlePaymentSuccess} onError={err => toast.error(err)} />
+                    <label className="block text-sm font-body mb-3 text-smoke-200">Pay with PayPal</label>
+                    <PayPalCheckout 
+                      amount={totalAmount} 
+                      onSuccess={handlePayPalSuccess} 
+                      onError={(err) => toast.error(err.message || 'Payment failed')} 
+                    />
                   </div>
                 )}
 
