@@ -63,6 +63,16 @@ export default function Reservations() {
   const onSubmitReservation = async (data, directPaymentId = null) => {
     const usedPaymentId = directPaymentId || paypalPaymentId;
 
+    // Retrieve cart items from sessionStorage if not available in state
+    let cartItems = items;
+    if (cartItems.length === 0) {
+      const savedCart = sessionStorage.getItem('veranda_cart');
+      if (savedCart) {
+        cartItems = JSON.parse(savedCart);
+        console.log('Restored cart from sessionStorage:', cartItems);
+      }
+    }
+
     if (selectedTableIds.length === 0) {
       toast.error('Please select at least one table');
       setIsProcessingPayment(false);
@@ -74,6 +84,9 @@ export default function Reservations() {
       setIsProcessingPayment(false);
       return;
     }
+
+    // Save cart to sessionStorage before async operations
+    sessionStorage.setItem('veranda_cart', JSON.stringify(items));
 
     setIsSubmitting(true);
     try {
@@ -111,16 +124,16 @@ export default function Reservations() {
 
       // 4. Create order if items exist
       let order = null;
-      if (items.length > 0) {
+      if (cartItems.length > 0) {
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .insert([{
             reservation_id: reservation.id,
             user_email: data.email,
             total_amount: totalAmount,
-            paypal_order_id: paypalPaymentId || null,
+            paypal_order_id: usedPaymentId || null,
             stripe_payment_intent_id: null,
-            status: paypalPaymentId ? 'paid' : 'pending',
+            status: usedPaymentId ? 'paid' : 'pending',
           }])
           .select()
           .single();
@@ -128,7 +141,7 @@ export default function Reservations() {
         order = orderData;
 
         // 5. Insert order items
-        const orderItems = items.map(item => ({
+        const orderItems = cartItems.map(item => ({
           order_id: order.id,
           menu_item_id: item.id,
           quantity: item.quantity,
@@ -143,6 +156,7 @@ export default function Reservations() {
 
         // 6. Clear cart only after success
         clearCart();
+        sessionStorage.removeItem('veranda_cart');
       }
 
       // 7. Send email notification (optional)
