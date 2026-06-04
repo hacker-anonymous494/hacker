@@ -341,30 +341,52 @@ export default function Reservations() {
 
             {step === 3 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-heading text-xl">Your Order</h3>
-                    <button type="button" onClick={() => setShowOrderModal(true)} className="flex items-center gap-1 text-amber-400 text-sm">
-                      Add items
-                    </button>
-                  </div>
-                  {items.length === 0 ? (
-                    <p className="text-smoke-400 text-center py-4">No items added yet. Click "Add items" to pre-order.</p>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {items.map(item => (
-                        <div key={item.id} className="flex justify-between text-sm">
-                          <span>{item.name} x{item.quantity}</span>
-                          <span>${(item.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                      ))}
-                      <div className="border-t border-white/10 pt-2 font-bold flex justify-between">
-                        <span>Total</span>
-                        <span className="text-amber-400">${totalAmount.toFixed(2)}</span>
-                      </div>
+                {!groupLink ? (
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-heading text-xl">Your Order</h3>
+                      <button type="button" onClick={() => setShowOrderModal(true)} className="flex items-center gap-1 text-amber-400 text-sm">
+                        Add items
+                      </button>
                     </div>
-                  )}
-                </div>
+                    {items.length === 0 ? (
+                      <p className="text-smoke-400 text-center py-4">No items added yet. Click "Add items" to pre-order.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {items.map(item => (
+                          <div key={item.id} className="flex justify-between text-sm">
+                            <span>{item.name} x{item.quantity}</span>
+                            <span>${(item.price * item.quantity).toFixed(2)}</span>
+                          </div>
+                        ))}
+                        <div className="border-t border-white/10 pt-2 font-bold flex justify-between">
+                          <span>Total</span>
+                          <span className="text-amber-400">${totalAmount.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="glass p-4 rounded-xl">
+                    <h3 className="font-semibold">Combined Group Order:</h3>
+                    {groupItems.length === 0 ? (
+                      <p className="text-smoke-400 text-sm">No items added yet. Share the link!</p>
+                    ) : (
+                      <div className="space-y-1 max-h-60 overflow-y-auto mt-2">
+                        {groupItems.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm">
+                            <span>{item.name} x{item.quantity} ({item.guest_email})</span>
+                            <span>${(item.quantity * item.unit_price).toFixed(2)}</span>
+                          </div>
+                        ))}
+                        <div className="border-t pt-2 font-bold flex justify-between">
+                          <span>Total to pay</span>
+                          <span className="text-amber-400">${groupTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 mb-4">
                   <input
@@ -390,20 +412,37 @@ export default function Reservations() {
                         email: watch('email'),
                         phone: watch('phone'),
                       };
+
+                      const hostItems = items.map(i => ({
+                        guest_email: watch('email'),
+                        menu_item_id: i.id,
+                        name: i.name,
+                        quantity: i.quantity,
+                        unit_price: i.price,
+                      }));
+
                       try {
                         const res = await fetch('/.netlify/functions/create-group-session', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ hostEmail: watch('email'), reservationData }),
+                          body: JSON.stringify({
+                            hostEmail: watch('email'),
+                            reservationData,
+                            initialItems: hostItems,
+                          }),
                         });
-                        const { link, sessionId } = await res.json();
-                        setGroupLink(link);
-                        setGroupSessionId(sessionId);
-                        toast.success('Group link created! Share it with your friends.');
-                        try {
-                          await navigator.clipboard.writeText(link);
-                        } catch (clipboardErr) {
-                          console.warn('Clipboard copy failed', clipboardErr);
+                        const data = await res.json();
+                        if (data.link) {
+                          setGroupLink(data.link);
+                          setGroupSessionId(data.sessionId);
+                          setGroupItems(hostItems);
+                          setGroupTotal(hostItems.reduce((sum, i) => sum + i.quantity * i.unit_price, 0));
+                          toast.success('Group link created! Share it with your friends.');
+                          try {
+                            await navigator.clipboard.writeText(data.link);
+                          } catch (clipboardErr) {
+                            console.warn('Clipboard copy failed', clipboardErr);
+                          }
                         }
                       } catch (err) {
                         console.error('Group link creation failed', err);
