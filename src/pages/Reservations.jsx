@@ -164,7 +164,12 @@ export default function Reservations() {
         await fetch('/.netlify/functions/send-reservation-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...data, tables: selectedTableIds, orderTotal: totalAmount }),
+          body: JSON.stringify({
+            ...data,
+            tables: selectedTableIds,
+            orderTotal: totalAmount,
+            orderItems: cartItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+          }),
         });
       } catch (emailErr) {
         console.warn(emailErr);

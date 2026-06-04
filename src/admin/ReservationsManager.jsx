@@ -31,32 +31,51 @@ export default function ReservationsManager() {
 
   const fetchData = async () => {
     setLoading(true);
-    // Fetch reservations
-    const { data: resData } = await supabase
-      .from('reservations')
-      .select('*')
-      .eq('hidden', false)
-      .order('reservation_date', { ascending: false })
-      .order('reservation_time', { ascending: false });
-    setReservations(resData || []);
+    try {
+      // 1. Get reservations (not hidden)
+      const { data: resData, error: resErr } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('hidden', false)
+        .order('reservation_date', { ascending: false });
+      if (resErr) throw resErr;
+      setReservations(resData || []);
 
-    // Fetch orders
-    const { data: ordData } = await supabase.from('orders').select('*');
-    setOrders(ordData || []);
+      // 2. Get orders
+      const { data: ordData, error: ordErr } = await supabase.from('orders').select('*');
+      if (ordErr) throw ordErr;
+      setOrders(ordData || []);
 
-    // Fetch order items with menu item details
-    const { data: itemsData } = await supabase.from('order_items').select('*, menu_items(*)');
-    setOrderItems(itemsData || []);
+      // 3. Get order_items and manually join with menu_items (most reliable)
+      const { data: itemsData, error: itemsErr } = await supabase.from('order_items').select('*');
+      if (itemsErr) throw itemsErr;
+      const { data: menuData, error: menuErr } = await supabase.from('menu_items').select('*');
+      if (menuErr) throw menuErr;
 
-    // Fetch tables
-    const { data: tablesData } = await supabase.from('tables').select('*');
-    setTables(tablesData || []);
+      const menuMap = new Map();
+      menuData?.forEach(m => menuMap.set(m.id, m));
 
-    // Fetch reservation_tables mappings
-    const { data: rtData } = await supabase.from('reservation_tables').select('*');
-    setReservationTables(rtData || []);
+      const combinedItems = itemsData?.map(item => ({
+        ...item,
+        menu_items: menuMap.get(item.menu_item_id) || null,
+      })) || [];
+      setOrderItems(combinedItems);
 
-    setLoading(false);
+      // 4. Get tables
+      const { data: tablesData, error: tablesErr } = await supabase.from('tables').select('*');
+      if (tablesErr) throw tablesErr;
+      setTables(tablesData || []);
+
+      // 5. Get reservation_tables
+      const { data: rtData, error: rtErr } = await supabase.from('reservation_tables').select('*');
+      if (rtErr) throw rtErr;
+      setReservationTables(rtData || []);
+    } catch (err) {
+      console.error('Fetch error:', err);
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

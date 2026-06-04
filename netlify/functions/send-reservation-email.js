@@ -4,7 +4,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { name, email, date, time, guests, phone, notes } = JSON.parse(event.body);
+    const { name, email, date, time, guests, phone, notes, orderItems = [] } = JSON.parse(event.body);
 
     if (!name || !email || !date || !time || !guests) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing fields' }) };
@@ -17,11 +17,19 @@ exports.handler = async (event) => {
     }
 
     // Customer email HTML
+    const itemsHtml = orderItems.length > 0 ? `
+      <h3>Order Items</h3>
+      <ul>
+        ${orderItems.map(item => `<li>${item.name} x${item.quantity} — $${item.price.toFixed(2)}</li>`).join('')}
+      </ul>
+    ` : '';
+
     const customerHtml = `
       <div style="font-family: sans-serif;">
         <h2>Veranda – Reservation Request Received</h2>
         <p>Dear ${name},</p>
         <p>Your reservation for <strong>${date}</strong> at <strong>${time}</strong> for <strong>${guests}</strong> guests is pending confirmation.</p>
+        ${itemsHtml}
         <p>We will contact you shortly.</p>
         <hr />
         <p>Veranda | 42 Veranda Lane | (212) 555-0142</p>
