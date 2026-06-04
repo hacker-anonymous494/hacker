@@ -44,11 +44,8 @@ export default function Reservations() {
   const handlePayPalSuccess = (paymentDetails) => {
     setPaypalPaymentId(paymentDetails.paymentId);
     toast.success('Payment successful! Completing reservation...');
-    // Trigger form submission after short delay
-    setTimeout(() => {
-      const form = document.getElementById('reservation-form');
-      if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-    }, 500);
+    const form = document.getElementById('reservation-form');
+    if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
   };
 
   const onSubmitReservation = async (data) => {
@@ -56,13 +53,15 @@ export default function Reservations() {
       toast.error('Please select at least one table');
       return;
     }
+
     if (totalAmount > 0 && !paypalPaymentId) {
       toast.error('Please complete the payment first');
       return;
     }
+
     setIsSubmitting(true);
     try {
-      // Insert reservation
+      // 1. Insert reservation
       const { data: reservation, error: resError } = await supabase
         .from('reservations')
         .insert([{
@@ -79,7 +78,14 @@ export default function Reservations() {
         .single();
       if (resError) throw resError;
 
-      // Link tables
+      // 2. Lock tables (mark as unavailable)
+      const { error: lockError } = await supabase
+        .from('tables')
+        .update({ is_temporarily_unavailable: true })
+        .in('id', selectedTableIds);
+      if (lockError) throw lockError;
+
+      // 3. Link reservation to tables
       const tableLinks = selectedTableIds.map(tableId => ({
         reservation_id: reservation.id,
         table_id: tableId,
@@ -87,38 +93,52 @@ export default function Reservations() {
       const { error: linkError } = await supabase.from('reservation_tables').insert(tableLinks);
       if (linkError) throw linkError;
 
-      // If order exists and paid via PayPal
-      if (items.length > 0 && paypalPaymentId) {
-        const { data: order, error: orderError } = await supabase
+      // 4. Create order if items exist
+      let order = null;
+      if (items.length > 0) {
+        const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .insert([{
             reservation_id: reservation.id,
             user_email: data.email,
             total_amount: totalAmount,
-            paypal_order_id: paypalPaymentId,
-            status: 'paid',
+            paypal_order_id: paypalPaymentId || null,
+            stripe_payment_intent_id: null,
+            status: paypalPaymentId ? 'paid' : 'pending',
           }])
           .select()
           .single();
         if (orderError) throw orderError;
+        order = orderData;
 
+        // 5. Insert order items
         const orderItems = items.map(item => ({
           order_id: order.id,
           menu_item_id: item.id,
           quantity: item.quantity,
           unit_price: item.price,
         }));
+        console.log('Inserting order items:', orderItems);
         const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error('Order items insert failed:', itemsError);
+          throw itemsError;
+        }
+
+        // 6. Clear cart only after success
         clearCart();
       }
 
-      // Send email notification
-      await fetch('/.netlify/functions/send-reservation-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, tables: selectedTableIds, orderTotal: totalAmount }),
-      });
+      // 7. Send email notification (optional)
+      try {
+        await fetch('/.netlify/functions/send-reservation-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...data, tables: selectedTableIds, orderTotal: totalAmount }),
+        });
+      } catch (emailErr) {
+        console.warn(emailErr);
+      }
 
       toast.success('Reservation confirmed! Check your email.');
       setStep(4);

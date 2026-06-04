@@ -37,7 +37,7 @@ exports.handler = async (event) => {
         'api-key': BREVO_API_KEY,
       },
       body: JSON.stringify({
-        sender: { name: 'Veranda', email: 'your-verified-email@gmail.com' }, // Use your own verified email
+        sender: { name: 'Admin', email: 'gaceanxheloani@gmail.com' }, // Use your own verified email
         to: [{ email, name }],
         subject: 'Veranda – Reservation Received',
         htmlContent: customerHtml,

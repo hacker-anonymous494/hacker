@@ -11,11 +11,8 @@ export default function TableManager() {
   const [editForm, setEditForm] = useState({});
 
   const fetchData = async () => {
-    console.log('Fetching tables...');
-    const { data: tablesData, error: tablesError } = await supabase.from('tables').select('*').order('order');
-    if (tablesError) console.error('Tables fetch error:', tablesError);
-    const { data: groupsData, error: groupsError } = await supabase.from('table_groups').select('*');
-    if (groupsError) console.error('Groups fetch error:', groupsError);
+    const { data: tablesData } = await supabase.from('tables').select('*').order('order');
+    const { data: groupsData } = await supabase.from('table_groups').select('*');
     if (tablesData) setTables(tablesData);
     if (groupsData) setGroups(groupsData);
     setLoading(false);
@@ -25,21 +22,30 @@ export default function TableManager() {
     fetchData();
   }, []);
 
+  // Direct toggle with optimistic update
   const toggleAvailability = async (id, currentStatus) => {
     const newStatus = !currentStatus;
-    // Optimistic update
-    setTables(prev => prev.map(t => t.id === id ? { ...t, is_temporarily_unavailable: newStatus } : t));
+    // Immediate UI update
+    setTables(prev =>
+      prev.map(table =>
+        table.id === id ? { ...table, is_temporarily_unavailable: newStatus } : table
+      )
+    );
+    // Update database
     const { error } = await supabase
       .from('tables')
       .update({ is_temporarily_unavailable: newStatus })
       .eq('id', id);
     if (error) {
-      console.error('Toggle error:', error);
-      // Revert
-      setTables(prev => prev.map(t => t.id === id ? { ...t, is_temporarily_unavailable: currentStatus } : t));
+      // Revert on error
+      setTables(prev =>
+        prev.map(table =>
+          table.id === id ? { ...table, is_temporarily_unavailable: currentStatus } : table
+        )
+      );
       toast.error('Failed to update availability');
     } else {
-      toast.success(`Table ${newStatus ? 'unavailable' : 'available'}`);
+      toast.success(`Table marked as ${newStatus ? 'unavailable' : 'available'}`);
     }
   };
 
@@ -49,27 +55,28 @@ export default function TableManager() {
   };
 
   const saveEdit = async () => {
-    const updates = {
-      name: editForm.name,
-      capacity: editForm.capacity,
-      x_pos: editForm.x_pos,
-      y_pos: editForm.y_pos,
-      width: editForm.width,
-      height: editForm.height,
-      group_id: editForm.group_id || null,
-      is_temporarily_unavailable: editForm.is_temporarily_unavailable,
-    };
-    console.log('Saving updates:', updates);
+    // Optimistic update for all fields
+    setTables(prev =>
+      prev.map(t => t.id === editingTable ? { ...t, ...editForm } : t)
+    );
     const { error } = await supabase
       .from('tables')
-      .update(updates)
+      .update({
+        name: editForm.name,
+        capacity: editForm.capacity,
+        x_pos: editForm.x_pos,
+        y_pos: editForm.y_pos,
+        width: editForm.width,
+        height: editForm.height,
+        group_id: editForm.group_id || null,
+        is_temporarily_unavailable: editForm.is_temporarily_unavailable,
+      })
       .eq('id', editingTable);
     if (error) {
-      console.error('Save error:', error);
-      toast.error('Update failed: ' + error.message);
+      await fetchData(); // revert to database state
+      toast.error('Update failed');
     } else {
       toast.success('Table updated');
-      await fetchData(); // Refresh all tables
     }
     setEditingTable(null);
   };
@@ -79,19 +86,14 @@ export default function TableManager() {
     const fileName = `${tableId}_${Date.now()}_${file.name}`;
     const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, file);
     if (uploadError) {
-      console.error('Upload error:', uploadError);
       toast.error('Upload failed');
       return;
     }
     const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
     const field = type === 'photo' ? 'photo_url' : 'video_url';
-    const { error: updateError } = await supabase.from('tables').update({ [field]: publicUrl }).eq('id', tableId);
-    if (updateError) {
-      toast.error('Failed to save media URL');
-    } else {
-      toast.success(`${type} uploaded`);
-      await fetchData();
-    }
+    await supabase.from('tables').update({ [field]: publicUrl }).eq('id', tableId);
+    toast.success(`${type} uploaded`);
+    await fetchData();
   };
 
   if (loading) return <div className="p-8">Loading tables...</div>;
@@ -121,8 +123,8 @@ export default function TableManager() {
                 <td>{groups.find(g => g.id === table.group_id)?.name || '—'}</td>
                 <td>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
-                    table.is_temporarily_unavailable 
-                      ? 'bg-red-600/30 text-red-300' 
+                    table.is_temporarily_unavailable
+                      ? 'bg-red-600/30 text-red-300'
                       : 'bg-green-600/30 text-green-300'
                   }`}>
                     {table.is_temporarily_unavailable ? '❌ Unavailable' : '✅ Available'}
@@ -130,25 +132,17 @@ export default function TableManager() {
                 </td>
                 <td>
                   <div className="flex gap-2">
-                    {table.photo_url && (
-                      <a href={table.photo_url} target="_blank" rel="noreferrer" className="text-amber-400 hover:underline text-xs">Photo</a>
-                    )}
-                    {table.video_url && (
-                      <a href={table.video_url} target="_blank" rel="noreferrer" className="text-amber-400 hover:underline text-xs">Video</a>
-                    )}
+                    {table.photo_url && <a href={table.photo_url} target="_blank" rel="noreferrer" className="text-amber-400 text-xs">Photo</a>}
+                    {table.video_url && <a href={table.video_url} target="_blank" rel="noreferrer" className="text-amber-400 text-xs">Video</a>}
                   </div>
                 </td>
                 <td className="flex gap-2">
                   <button
                     onClick={() => toggleAvailability(table.id, table.is_temporarily_unavailable)}
                     className="p-1.5 rounded-md hover:bg-white/10 transition"
-                    title={table.is_temporarily_unavailable ? 'Mark as Available' : 'Mark as Unavailable'}
+                    title={table.is_temporarily_unavailable ? 'Mark Available' : 'Mark Unavailable'}
                   >
-                    {table.is_temporarily_unavailable ? (
-                      <Ban className="w-4 h-4 text-red-400" />
-                    ) : (
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                    )}
+                    {table.is_temporarily_unavailable ? <Ban className="w-4 h-4 text-red-400" /> : <CheckCircle className="w-4 h-4 text-green-400" />}
                   </button>
                   <button
                     onClick={() => startEdit(table)}
@@ -163,7 +157,7 @@ export default function TableManager() {
         </table>
       </div>
 
-      {/* Edit Modal */}
+      {/* Edit Modal (same as before) */}
       {editingTable && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setEditingTable(null)}>
           <div className="bg-smoke-900 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
@@ -181,8 +175,8 @@ export default function TableManager() {
                 <input type="number" value={editForm.capacity} onChange={e => setEditForm({...editForm, capacity: parseInt(e.target.value)})} className="w-full bg-white/10 rounded-lg px-3 py-2" />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label>X Position</label><input type="number" value={editForm.x_pos || 0} onChange={e => setEditForm({...editForm, x_pos: parseInt(e.target.value)})} className="w-full bg-white/10 rounded-lg px-3 py-2" /></div>
-                <div><label>Y Position</label><input type="number" value={editForm.y_pos || 0} onChange={e => setEditForm({...editForm, y_pos: parseInt(e.target.value)})} className="w-full bg-white/10 rounded-lg px-3 py-2" /></div>
+                <div><label>X</label><input type="number" value={editForm.x_pos || 0} onChange={e => setEditForm({...editForm, x_pos: parseInt(e.target.value)})} className="w-full bg-white/10 rounded-lg px-3 py-2" /></div>
+                <div><label>Y</label><input type="number" value={editForm.y_pos || 0} onChange={e => setEditForm({...editForm, y_pos: parseInt(e.target.value)})} className="w-full bg-white/10 rounded-lg px-3 py-2" /></div>
               </div>
               <div>
                 <label>Group</label>
@@ -193,11 +187,7 @@ export default function TableManager() {
               </div>
               <div>
                 <label>Availability</label>
-                <select 
-                  value={editForm.is_temporarily_unavailable} 
-                  onChange={e => setEditForm({...editForm, is_temporarily_unavailable: e.target.value === 'true'})}
-                  className="w-full bg-white/10 rounded-lg px-3 py-2"
-                >
+                <select value={editForm.is_temporarily_unavailable} onChange={e => setEditForm({...editForm, is_temporarily_unavailable: e.target.value === 'true'})} className="w-full bg-white/10 rounded-lg px-3 py-2">
                   <option value="false">✅ Available</option>
                   <option value="true">❌ Unavailable</option>
                 </select>
