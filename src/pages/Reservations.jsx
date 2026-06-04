@@ -141,6 +141,21 @@ export default function Reservations() {
       return;
     }
 
+    // Double-check table availability before proceeding
+    const { data: tablesCheck, error: checkError } = await supabase
+      .from('tables')
+      .select('id, is_temporarily_unavailable')
+      .in('id', selectedTableIds);
+    if (checkError) throw checkError;
+
+    const unavailableTables = tablesCheck.filter(t => t.is_temporarily_unavailable === true);
+    if (unavailableTables.length > 0) {
+      toast.error(`Some selected tables are no longer available. Please reselect.`);
+      setStep(2);
+      setIsProcessingPayment(false);
+      return;
+    }
+
     // Save cart to sessionStorage before async operations
     sessionStorage.setItem('veranda_cart', JSON.stringify(cartItems));
 
@@ -267,6 +282,25 @@ export default function Reservations() {
   maxDate.setDate(maxDate.getDate() + 30);
   const maxDateStr = maxDate.toISOString().split('T')[0];
 
+  const getAvailableTimeSlots = () => {
+    const allTimes = ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
+    const selectedDate = watch('date');
+    if (!selectedDate) return allTimes;
+
+    if (selectedDate !== today) return allTimes;
+
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeMinutes = currentHour * 60 + currentMinute;
+
+    return allTimes.filter(time => {
+      const [hours, minutes] = time.split(':');
+      const timeMinutes = parseInt(hours) * 60 + parseInt(minutes);
+      return timeMinutes > currentTimeMinutes;
+    });
+  };
+
   return (
     <div className="min-h-screen pt-28 pb-16">
       <div className="container-custom max-w-4xl mx-auto">
@@ -316,7 +350,7 @@ export default function Reservations() {
                   <div>
                     <label className="block text-sm mb-1">Time *</label>
                     <select {...register('time')} className="w-full px-4 py-2 bg-white/5 rounded-xl">
-                      {['17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'].map(t => <option key={t}>{t}</option>)}
+                      {getAvailableTimeSlots().map(t => <option key={t}>{t}</option>)}
                     </select>
                     {errors.time && <p className="text-red-400 text-xs mt-1">{errors.time.message}</p>}
                   </div>
@@ -507,17 +541,24 @@ export default function Reservations() {
                   </div>
                 )}
 
-                {(!isGroupOrder || (isGroupOrder && groupLink && groupTotal > 0)) && (
-                  <div className="border-t border-white/10 pt-4">
-                    <label className="block text-sm font-body mb-3 text-smoke-200">Pay with PayPal</label>
-                    <PayPalCheckout
-                      amount={isGroupOrder ? groupTotal : totalAmount}
-                      onSuccess={handlePayPalSuccess}
-                      onError={(err) => toast.error(err.message || 'Payment failed')}
-                      disabled={isProcessingPayment}
-                    />
-                  </div>
-                )}
+                {(() => {
+                  const displayAmount = isGroupOrder ? groupTotal : totalAmount;
+                  return displayAmount >= 20 ? (
+                    <div className="border-t border-white/10 pt-4">
+                      <label className="block text-sm font-body mb-3 text-smoke-200">Pay with PayPal (min $20)</label>
+                      <PayPalCheckout
+                        amount={displayAmount}
+                        onSuccess={handlePayPalSuccess}
+                        onError={(err) => toast.error(err.message || 'Payment failed')}
+                        disabled={isProcessingPayment}
+                      />
+                    </div>
+                  ) : displayAmount > 0 && displayAmount < 20 ? (
+                    <div className="border-t border-white/10 pt-4">
+                      <p className="text-amber-400 text-sm">⚠️ Minimum order for PayPal is $20. You can pay cash at the venue.</p>
+                    </div>
+                  ) : null;
+                })()}
 
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setStep(2)} className="btn-outline flex-1">Back</button>
