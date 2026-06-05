@@ -14,25 +14,30 @@ export default function Pizza() {
     fetchPizzas()
   }, [])
 
-  const fetchPizzas = async () => {
-    setLoading(true)
-    try {
+    const fetchPizzas = async () => {
+      const { data: category, error: catError } = await supabase
+        .from('menu_categories')
+        .select('id')
+        .eq('name', 'Pizza')
+        .single()
+
+      if (catError || !category) {
+        setPizzas([])
+        setLoading(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('menu_items')
         .select('*')
-        .eq('categories.name', 'Pizza')
+        .eq('category_id', category.id)
         .order('featured', { ascending: false })
-        .order('name')
+        .order('name', { ascending: true })
 
-      if (error) throw error
-      setPizzas(data || [])
-    } catch (error) {
-      console.error('Error fetching pizzas:', error)
-      setPizzas(mockPizzas)
-    } finally {
+      if (!error && data) setPizzas(data)
+      else if (error) setPizzas([])
       setLoading(false)
     }
-  }
 
   const filterPizzas = () => {
     let filtered = pizzas

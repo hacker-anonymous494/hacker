@@ -12,9 +12,34 @@ export default function Cocktails() {
   const [showFeaturedOnly, setShowFeaturedOnly] = useState(false)
 
   useEffect(() => {
-    fetchCocktails()
-  }, [])
+    useEffect(() => {
+      const fetchCocktails = async () => {
+        const { data: category, error: catError } = await supabase
+          .from('menu_categories')
+          .select('id')
+          .eq('name', 'Cocktails')
+          .single();
 
+        if (catError || !category) {
+          setCocktails([]);
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('menu_items')
+          .select('*')
+          .eq('category_id', category.id)
+          .order('featured', { ascending: false })
+          .order('name', { ascending: true });
+
+        if (!error && data) setCocktails(data);
+        else if (error) setCocktails([]);
+        setLoading(false);
+      };
+
+      fetchCocktails();
+    }, []);
   const fetchCocktails = async () => {
     setLoading(true)
     try {
