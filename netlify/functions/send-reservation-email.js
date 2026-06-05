@@ -1,3 +1,5 @@
+const { createClient } = require('@supabase/supabase-js');
+
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
@@ -5,8 +7,17 @@ exports.handler = async (event) => {
 
   try {
     const { name, email, date, time, guests, phone, notes, orderItems = [] } = JSON.parse(event.body);
+  const supabaseAdmin = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     if (!name || !email || !date || !time || !guests) {
+            // Log potential abuse or invalid submission
+            await supabaseAdmin.from('security_events').insert([{
+              event_type: 'invalid_reservation_submission',
+              severity: 'info',
+              ip_address: event.headers['x-forwarded-for'] || event.headers['x-client-ip'] || 'unknown',
+              details: { missing_fields: true },
+            }]).catch(err => console.warn('Security log failed:', err));
+
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing fields' }) };
     }
 
@@ -55,6 +66,14 @@ exports.handler = async (event) => {
     if (!brevoResponse.ok) {
       const error = await brevoResponse.text();
       console.error('Brevo error:', error);
+            // Log email failure
+            await supabaseAdmin.from('security_events').insert([{
+              event_type: 'email_send_failed',
+              severity: 'error',
+              ip_address: event.headers['x-forwarded-for'] || event.headers['x-client-ip'] || 'unknown',
+              details: { email, error: error.substring(0, 200) },
+            }]).catch(err => console.warn('Security log failed:', err));
+
       return { statusCode: 500, body: JSON.stringify({ error: 'Email send failed' }) };
     }
 

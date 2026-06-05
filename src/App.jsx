@@ -2,6 +2,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { useEffect, Suspense, lazy } from 'react'
 import { useAuthStore } from '@/store/authStore'
+import { useAnalytics } from '@/hooks/useAnalytics'
 import Layout from '@/components/layout/Layout'
 import AdminLayout from '@/components/layout/AdminLayout'
 import ProtectedRoute from '@/components/layout/ProtectedRoute'
@@ -32,6 +33,7 @@ const AdminContent = lazy(() => import('@/admin/ContentManager'))
 export default function App() {
   const location = useLocation()
   const initialize = useAuthStore((s) => s.initialize)
+  useAnalytics()
 
   useEffect(() => {
     initialize()

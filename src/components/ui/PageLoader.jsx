@@ -62,7 +62,7 @@ export default function PageLoader() {
         {/* Wordmark */}
         <div className="loader-wordmark">
           <span className="loader-est">Est. 2025</span>
-          <h1 className="loader-title">Veranda</h1>
+          <h1 className="loader-title">Trifilia</h1>
           <div className="loader-divider">
             <span className="divider-line" />
             <span className="divider-diamond">◆</span>

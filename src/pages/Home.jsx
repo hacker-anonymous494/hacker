@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Autoplay, Pagination, Navigation } from 'swiper/modules'
 import { Calendar, Music, Coffee, Wine, ArrowRight, Star } from 'lucide-react'
+import GoogleReviews from '@/components/ui/GoogleReviews'
 
 import 'swiper/css'
 import 'swiper/css/pagination'
@@ -295,6 +296,13 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* Google Reviews Section */}
+      <section className="section-py bg-smoke-950 border-t border-white/5">
+        <div className="container-custom max-w-3xl mx-auto">
+          <GoogleReviews />
+        </div>
+      </section>
 
       {/* Newsletter & Reservation CTA */}
       <section className="section-py bg-gradient-to-b from-smoke-900 to-smoke-950">
