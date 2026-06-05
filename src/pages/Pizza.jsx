@@ -139,34 +139,78 @@ export default function Pizza() {
                     <h3 className="font-heading text-xl font-semibold">{pizza.name}</h3>
                     <span className="font-body text-amber-400 font-bold text-lg">${pizza.price}</span>
                   </div>
-                  <p className="text-smoke-400 text-sm mb-2">{pizza.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {pizza.featured && (
-                      <span className="badge bg-amber-600/80 text-white border-none">
-                        <Flame className="w-3 h-3 mr-1" /> Chef's Special
-                      </span>
-                    )}
-                    {pizza.tags?.includes('vegetarian') && (
-                      <span className="badge bg-green-600/80 text-white border-none">Vegetarian</span>
-                    )}
-                    {pizza.tags?.includes('gluten-free') && (
-                      <span className="badge bg-blue-600/80 text-white border-none">Gluten Free</span>
-                    )}
-                    {pizza.tags?.includes('spicy') && (
-                      <span className="badge bg-red-600/80 text-white border-none">Spicy</span>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+                  import { useState, useEffect } from 'react';
+                  import { supabase } from '@/lib/supabase';
+                  import PageLoader from '@/components/ui/PageLoader';
 
-const mockPizzas = [
-  { id: '1', name: 'Margherita', description: 'San Marzano tomatoes, fresh mozzarella, basil, EVOO', price: 16, featured: true, tags: ['vegetarian'], allergens: ['dairy', 'gluten'], image_url: null },
-  { id: '2', name: 'Pepperoni', description: 'Tomato sauce, mozzarella, spicy pepperoni, oregano', price: 19, featured: false, tags: [], allergens: ['dairy', 'gluten'], image_url: null },
-]
+                  export default function Pizza() {
+                    const [pizzas, setPizzas] = useState([]);
+                    const [loading, setLoading] = useState(true);
+
+                    useEffect(() => {
+                      const fetchPizzas = async () => {
+                        const { data: category, error: catError } = await supabase
+                          .from('menu_categories')
+                          .select('id')
+                          .eq('name', 'Pizza')
+                          .single();
+      
+                        if (catError || !category) {
+                          console.error('Pizza category not found');
+                          setLoading(false);
+                          return;
+                        }
+      
+                        const { data, error } = await supabase
+                          .from('menu_items')
+                          .select('*')
+                          .eq('category_id', category.id)
+                          .order('featured', { ascending: false })
+                          .order('name');
+      
+                        if (error) {
+                          console.error('Error fetching pizzas:', error);
+                        } else {
+                          setPizzas(data || []);
+                        }
+                        setLoading(false);
+                      };
+                      fetchPizzas();
+                    }, []);
+
+                    if (loading) return ;
+
+                    return (
+    
+      
+                          Artisan Pizza
+        
+                          {pizzas.length === 0 ? (
+                            No pizzas found.
+
+                          ) : (
+          
+                              {pizzas.map((pizza) => (
+              
+                                  {pizza.image_url && (
+                  
+                                  )}
+                
+                                    {pizza.name}
+                                    {pizza.description}
+
+                                    ${pizza.price}
+
+                
+
+              
+
+                              ))}
+          
+
+                          )}
+      
+
+    
+                    );
+                  }
