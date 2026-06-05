@@ -81,7 +81,7 @@ export default function About() {
               className="relative"
             >
               <div className="aspect-square rounded-2xl overflow-hidden glass">
-                <img src="/about-interior.jpg" alt="Trifilia interior" className="w-full h-full object-cover" loading="lazy" />
+                <img src="../public/about-interior.jpg" alt="Trifilia interior" className="w-full h-full object-cover" loading="lazy" />
               </div>
               <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-amber-600/20 rounded-full blur-3xl -z-10" />
             </motion.div>
