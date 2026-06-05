@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import ReCAPTCHA from 'react-google-recaptcha';
 import { supabase } from '@/lib/supabase';
 import TableSelector from '@/components/reservation/TableSelector';
 import OrderModal from '@/components/reservation/OrderModal';
@@ -12,7 +13,7 @@ import { useOrderStore } from '@/store/orderStore';
 
 const reservationSchema = z.object({
   name: z.string().min(2, 'Name is required'),
-  email: z.string().email('Valid email required'),
+  email: z.string().min(1, 'Email is required').email('Valid email required for confirmation'),
   phone: z.string().min(10, 'Valid phone required'),
   guests: z.number().min(1).max(20),
   date: z.string().min(1),
@@ -32,6 +33,8 @@ export default function Reservations() {
   const [groupItems, setGroupItems] = useState([]);
   const [groupTotal, setGroupTotal] = useState(0);
   const [paypalPaymentId, setPaypalPaymentId] = useState(null);
+  const [recaptchaToken, setRecaptchaToken] = useState(null);
+  const recaptchaRef = useRef(null);
   const { items, getTotal, clearCart } = useOrderStore();
   const totalAmount = getTotal();
 
@@ -90,7 +93,7 @@ export default function Reservations() {
     const handleGroupItemsLoaded = (event) => {
       const cartItems = event.detail || [];
       useOrderStore.setState({ items: cartItems });
-      sessionStorage.setItem('veranda_cart', JSON.stringify(cartItems));
+      sessionStorage.setItem('Trifilia_cart', JSON.stringify(cartItems));
     };
 
     window.addEventListener('groupItemsLoaded', handleGroupItemsLoaded);
@@ -122,7 +125,7 @@ export default function Reservations() {
     // Retrieve cart items from sessionStorage if not available in state
     let cartItems = items;
     if (cartItems.length === 0) {
-      const savedCart = sessionStorage.getItem('veranda_cart');
+      const savedCart = sessionStorage.getItem('Trifilia_cart');
       if (savedCart) {
         cartItems = JSON.parse(savedCart);
         console.log('Restored cart from sessionStorage:', cartItems);
@@ -141,6 +144,27 @@ export default function Reservations() {
       return;
     }
 
+    if (totalAmount === 0 && !usedPaymentId) {
+      if (!recaptchaToken) {
+        toast.error('Please complete the reCAPTCHA');
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      const verifyRes = await fetch('/.netlify/functions/verify-recaptcha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: recaptchaToken }),
+      });
+      const { success } = await verifyRes.json();
+
+      if (!success) {
+        toast.error('reCAPTCHA verification failed. Please try again.');
+        setIsProcessingPayment(false);
+        return;
+      }
+    }
+
     // Double-check table availability before proceeding
     const { data: tablesCheck, error: checkError } = await supabase
       .from('tables')
@@ -157,7 +181,7 @@ export default function Reservations() {
     }
 
     // Save cart to sessionStorage before async operations
-    sessionStorage.setItem('veranda_cart', JSON.stringify(cartItems));
+    sessionStorage.setItem('Trifilia_cart', JSON.stringify(cartItems));
 
     setIsSubmitting(true);
     try {
@@ -227,7 +251,7 @@ export default function Reservations() {
 
         // 6. Clear cart only after success
         clearCart();
-        sessionStorage.removeItem('veranda_cart');
+        sessionStorage.removeItem('Trifilia_cart');
 
         if (isGroupOrder && order) {
           try {
@@ -331,6 +355,7 @@ export default function Reservations() {
                     <label className="block text-sm mb-1">Email *</label>
                     <input {...register('email')} className="w-full px-4 py-2 bg-white/5 rounded-xl" />
                     {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
+                    <p className="text-sm text-slate-400 mt-1">We'll send your reservation confirmation and important updates to this email.</p>
                   </div>
                   <div>
                     <label className="block text-sm mb-1">Phone *</label>
@@ -560,10 +585,22 @@ export default function Reservations() {
                   ) : null;
                 })()}
 
+                {totalAmount === 0 && (
+                  <div className="border-t border-white/10 pt-4">
+                    <p className="mb-3 text-sm text-slate-300">Please verify you're human before completing your free reservation.</p>
+                    <ReCAPTCHA
+                      sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                      onChange={(token) => setRecaptchaToken(token)}
+                      ref={recaptchaRef}
+                    />
+                    <p className="text-sm text-slate-400 mt-2">This helps us prevent spam reservations.</p>
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setStep(2)} className="btn-outline flex-1">Back</button>
                   {totalAmount === 0 && (
-                    <button type="submit" disabled={isSubmitting || isProcessingPayment} className="btn-primary flex-1">
+                    <button type="submit" disabled={isSubmitting || isProcessingPayment || !recaptchaToken} className="btn-primary flex-1">
                       {isSubmitting || isProcessingPayment ? 'Processing...' : 'Complete Reservation (Pay at Venue)'}
                     </button>
                   )}

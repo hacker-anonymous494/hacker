@@ -32,6 +32,6 @@ export const useOrderStore = create(
       clearCart: () => set({ items: [] }),
       getTotal: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
     }),
-    { name: 'veranda-cart' }
+    { name: 'Trifilia-cart' }
   )
 );

@@ -42,7 +42,7 @@ export default function Events() {
           <h1 className="font-display text-4xl md:text-5xl mt-2 mb-4">Upcoming Events</h1>
           <div className="w-20 h-0.5 bg-amber-500/50 mx-auto" />
           <p className="text-smoke-300 max-w-2xl mx-auto mt-4">
-            From live jazz to DJ nights – experience Veranda after dark.
+            From live jazz to DJ nights – experience Trifilia after dark.
           </p>
         </div>
 
@@ -137,7 +137,7 @@ export default function Events() {
 const mockEvents = [
   {
     id: '1',
-    name: 'Veranda Grand Opening',
+    name: 'Trifilia Grand Opening',
     description: 'Celebrate our launch with complimentary welcome cocktails and live jazz.',
     date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     time: '7:00 PM',

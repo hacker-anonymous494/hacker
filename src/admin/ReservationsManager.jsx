@@ -85,7 +85,7 @@ export default function ReservationsManager() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reservations' }, (payload) => {
         toast.success(`New reservation from ${payload.new.name}!`);
         if (Notification.permission === 'granted') {
-          new Notification(`Veranda: New reservation from ${payload.new.name}`, {
+          new Notification(`Trifilia: New reservation from ${payload.new.name}`, {
             body: `${payload.new.guests} guests on ${payload.new.reservation_date} at ${payload.new.reservation_time}`,
           });
         }

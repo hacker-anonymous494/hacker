@@ -45,7 +45,7 @@ export default function About() {
             <motion.span variants={fadeUp} className="text-amber-500 font-accent text-sm tracking-widest uppercase">Our Story</motion.span>
             <motion.h1 variants={fadeUp} className="font-display text-4xl md:text-6xl mt-2 mb-6">A Vision Born from Fire & Ice</motion.h1>
             <motion.p variants={fadeUp} className="text-lg text-smoke-300 leading-relaxed">
-              Veranda opened its doors in 2025 with a simple dream: to create a space where the primal crackle of a wood‑fired oven meets the sophisticated artistry of craft cocktails.
+              Trifilia opened its doors in 2025 with a simple dream: to create a space where the primal crackle of a wood‑fired oven meets the sophisticated artistry of craft cocktails.
             </motion.p>
           </motion.div>
         </div>
@@ -60,10 +60,10 @@ export default function About() {
               animate={storyInView ? "visible" : "hidden"}
               variants={stagger}
             >
-              <motion.span variants={fadeUp} className="text-amber-500 font-accent text-sm tracking-widest uppercase">The Veranda Ethos</motion.span>
+              <motion.span variants={fadeUp} className="text-amber-500 font-accent text-sm tracking-widest uppercase">The Trifilia Ethos</motion.span>
               <motion.h2 variants={fadeUp} className="font-display text-3xl md:text-4xl mt-2 mb-5">Where Rustic Meets Refined</motion.h2>
               <motion.p variants={fadeUp} className="text-smoke-300 mb-4">
-                Inspired by the lush rooftop terraces of southern Europe and the speakeasy culture of New York, Veranda is an escape from the ordinary. 
+                Inspired by the lush rooftop terraces of southern Europe and the speakeasy culture of New York, Trifilia is an escape from the ordinary. 
                 Our name evokes open‑air elegance – a place to linger over a perfectly charred pizza and a Negroni as the city hums below.
               </motion.p>
               <motion.p variants={fadeUp} className="text-smoke-300 mb-6">
@@ -71,7 +71,7 @@ export default function About() {
                 Sustainability is at our core: zero‑waste kitchen practices and compostable packaging for takeout.
               </motion.p>
               <motion.div variants={fadeUp}>
-                <Link to="/reservations" className="btn-primary">Experience Veranda</Link>
+                <Link to="/reservations" className="btn-primary">Experience Trifilia</Link>
               </motion.div>
             </motion.div>
             <motion.div
@@ -81,7 +81,7 @@ export default function About() {
               className="relative"
             >
               <div className="aspect-square rounded-2xl overflow-hidden glass">
-                <img src="/about-interior.jpg" alt="Veranda interior" className="w-full h-full object-cover" loading="lazy" />
+                <img src="/about-interior.jpg" alt="Trifilia interior" className="w-full h-full object-cover" loading="lazy" />
               </div>
               <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-amber-600/20 rounded-full blur-3xl -z-10" />
             </motion.div>

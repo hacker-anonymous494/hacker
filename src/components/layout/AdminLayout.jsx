@@ -42,7 +42,7 @@ export default function AdminLayout() {
           <div className="p-5 border-b border-white/10">
             <div className="flex items-center gap-2">
               <Flame className="w-6 h-6 text-amber-500" />
-              <span className="font-accent text-base font-semibold tracking-widest text-white">VERANDA</span>
+              <span className="font-accent text-base font-semibold tracking-widest text-white">Trifilia</span>
               <span className="text-xs bg-amber-600/30 text-amber-400 px-2 py-0.5 rounded-full ml-2">Admin</span>
             </div>
           </div>

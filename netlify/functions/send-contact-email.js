@@ -34,9 +34,9 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Veranda Contact <contact@verandabar.com>',
-        to: ['hello@verandabar.com'],
-        subject: `Veranda Contact: ${name}`,
+        from: 'Trifilia Contact <contact@Trifiliabar.com>',
+        to: ['hello@Trifiliabar.com'],
+        subject: `Trifilia Contact: ${name}`,
         html: emailHtml,
         reply_to: email,
       }),

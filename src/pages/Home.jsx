@@ -63,9 +63,21 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
+          {/* Background Video */}
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover z-0"
+          >
+            <source src="/background-video.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+
+          {/* Dark gradient overlay for better text readability */}
           <div className="absolute inset-0 bg-gradient-to-b from-smoke-950/70 via-smoke-950/50 to-smoke-950 z-10" />
           <div className="absolute inset-0 bg-noise opacity-30 z-20" />
-          <div className="absolute inset-0 bg-[url('https://placehold.co/1920x1080')] bg-cover bg-center z-0" />
         </div>
 
         <div className="relative z-30 container-custom text-center" ref={heroRef}>
@@ -81,7 +93,7 @@ export default function Home() {
               </span>
             </motion.div>
             <motion.h1 variants={fadeUp} className="font-display text-5xl md:text-7xl lg:text-8xl font-bold mb-6 leading-[1.1]">
-              Veranda
+              Trifilia
             </motion.h1>
             <motion.p variants={fadeUp} className="text-lg md:text-xl text-smoke-200 max-w-2xl mx-auto mb-8 font-body">
               Wood‑fired artisan pizza & hand‑crafted cocktails in an intimate, lush escape.
@@ -125,7 +137,7 @@ export default function Home() {
               >
                 <div className="relative h-56 overflow-hidden bg-smoke-800">
                   <img
-                    src={item.image_url || 'https://placehold.co/600x400?text=Veranda'}
+                    src={item.image_url || 'https://placehold.co/600x400?text=Trifilia'}
                     alt={item.name}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     loading="lazy"
@@ -213,7 +225,7 @@ export default function Home() {
               <span className="text-amber-500 font-accent text-sm tracking-widest uppercase">Our Story</span>
               <h2 className="font-display text-3xl md:text-4xl mt-2 mb-5">A Place Where Flames Meet Craft</h2>
               <p className="text-smoke-300 mb-4">
-                Veranda was born from a love of two things: the primal crackle of a wood‑fired oven and the artistry of a well‑shaken cocktail. 
+                Trifilia was born from a love of two things: the primal crackle of a wood‑fired oven and the artistry of a well‑shaken cocktail. 
                 We blend the warmth of a rustic pizzeria with the sophistication of a modern cocktail bar.
               </p>
               <p className="text-smoke-300 mb-6">
@@ -287,7 +299,7 @@ export default function Home() {
       {/* Newsletter & Reservation CTA */}
       <section className="section-py bg-gradient-to-b from-smoke-900 to-smoke-950">
         <div className="container-custom text-center max-w-3xl mx-auto">
-          <h2 className="font-display text-3xl md:text-4xl mb-4">Join the Veranda Circle</h2>
+          <h2 className="font-display text-3xl md:text-4xl mb-4">Join the Trifilia Circle</h2>
           <p className="text-smoke-300 mb-8">Be the first to know about exclusive events, new menu drops, and special offers.</p>
           <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
             <input type="email" placeholder="Your email address" className="flex-1 px-5 py-3 bg-white/5 border border-white/10 rounded-full text-white focus:outline-none focus:border-amber-500/50" required />

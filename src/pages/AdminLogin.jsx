@@ -54,7 +54,7 @@ export default function AdminLogin() {
               <Lock className="w-8 h-8 text-amber-500" />
             </div>
             <h1 className="font-display text-2xl font-bold">Admin Portal</h1>
-            <p className="text-smoke-400 text-sm mt-2">Sign in to manage Veranda</p>
+            <p className="text-smoke-400 text-sm mt-2">Sign in to manage Trifilia</p>
           </div>
 
           {error && (
@@ -73,7 +73,7 @@ export default function AdminLogin() {
                 type="email"
                 {...register('email')}
                 className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-amber-500/50"
-                placeholder="admin@verandabar.com"
+                placeholder="admin@Trifiliabar.com"
                 autoComplete="email"
               />
               {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
@@ -110,7 +110,7 @@ export default function AdminLogin() {
           </form>
 
           <p className="text-xs text-smoke-500 text-center mt-6">
-            Demo credentials: admin@verandabar.com / admin123
+            Demo credentials: admin@Trifiliabar.com / admin123
           </p>
         </div>
       </motion.div>

@@ -20,12 +20,12 @@ const LINKS = {
 
 export default function Footer() {
   const [contact, setContact] = useState({
-    address: '42 Veranda Lane, New York, NY 10012',
+    address: '42 Trifilia Lane, New York, NY 10012',
     phone: '(212) 555-0142',
-    email: 'hello@verandabar.com',
-    instagram: 'https://instagram.com/verandabar',
-    facebook: 'https://facebook.com/verandabar',
-    twitter: 'https://twitter.com/verandabar',
+    email: 'hello@Trifiliabar.com',
+    instagram: 'https://instagram.com/Trifiliabar',
+    facebook: 'https://facebook.com/Trifiliabar',
+    twitter: 'https://twitter.com/Trifiliabar',
     hours: 'Mon–Thu 5pm–12am, Fri–Sat 5pm–2am, Sun 4pm–11pm',
   })
 
@@ -52,7 +52,7 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-5">
               <Flame className="w-6 h-6 text-amber-500" />
-              <span className="font-accent text-base font-semibold tracking-widest text-white">VERANDA</span>
+              <span className="font-accent text-base font-semibold tracking-widest text-white">Trifilia</span>
             </Link>
             <p className="text-smoke-400 text-sm font-body leading-relaxed mb-6">
               Where wood‑fired artisan pizza meets hand‑crafted cocktails.<br />A lush escape in the heart of the city.
@@ -99,7 +99,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-16 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs font-body text-smoke-600">© {new Date().getFullYear()} Veranda. All rights reserved.</p>
+          <p className="text-xs font-body text-smoke-600">© {new Date().getFullYear()} Trifilia. All rights reserved.</p>
           <div className="flex gap-5">
             <Link to="/privacy" className="text-xs font-body text-smoke-600 hover:text-smoke-400 transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="text-xs font-body text-smoke-600 hover:text-smoke-400 transition-colors">Terms of Service</Link>

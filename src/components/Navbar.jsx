@@ -28,13 +28,13 @@ export default function Navbar({ scrolled }) {
     <>
       <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'glass-dark border-b border-white/5 py-3' : 'bg-transparent py-5'}`}>
         <div className="container-custom flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 group" aria-label="Veranda – Home">
+          <Link to="/" className="flex items-center gap-2.5 group" aria-label="Trifilia – Home">
             <div className="relative">
               <Flame className="w-7 h-7 text-ember-500 transition-all duration-300 group-hover:text-ember-400 group-hover:scale-110" />
               <div className="absolute inset-0 blur-md bg-ember-500/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
             <div>
-              <span className="font-accent text-lg font-semibold tracking-widest text-white">VERANDA</span>
+              <span className="font-accent text-lg font-semibold tracking-widest text-white">Trifilia</span>
             </div>
           </Link>
 

@@ -13,6 +13,6 @@ exports.handler = async (event) => {
     .single();
   
   if (error) return { statusCode: 500, body: JSON.stringify({ error }) };
-  const link = `https://verandacafe.netlify.app/join?token=${token}`;
+  const link = `https://Trifiliacafe.netlify.app/join?token=${token}`;
   return { statusCode: 200, body: JSON.stringify({ sessionId: data.id, token, link }) };
 };

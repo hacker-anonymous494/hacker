@@ -68,7 +68,7 @@ export default function Dashboard() {
     <div>
       <div className="mb-8">
         <h1 className="font-display text-3xl">Dashboard</h1>
-        <p className="text-smoke-400">Welcome back to Veranda admin panel.</p>
+        <p className="text-smoke-400">Welcome back to Trifilia admin panel.</p>
       </div>
 
       {/* Stats Grid */}

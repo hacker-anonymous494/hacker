@@ -26,13 +26,13 @@ exports.handler = async (event) => {
 
     const customerHtml = `
       <div style="font-family: sans-serif;">
-        <h2>Veranda – Reservation Request Received</h2>
+        <h2>Trifilia – Reservation Request Received</h2>
         <p>Dear ${name},</p>
         <p>Your reservation for <strong>${date}</strong> at <strong>${time}</strong> for <strong>${guests}</strong> guests is pending confirmation.</p>
         ${itemsHtml}
         <p>We will contact you shortly.</p>
         <hr />
-        <p>Veranda | 42 Veranda Lane | (212) 555-0142</p>
+        <p>Trifilia | 42 Trifilia Lane | (212) 555-0142</p>
       </div>
     `;
 
@@ -47,7 +47,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         sender: { name: 'Admin', email: 'gaceanxheloani@gmail.com' }, // Use your own verified email
         to: [{ email, name }],
-        subject: 'Veranda – Reservation Received',
+        subject: 'Trifilia – Reservation Received',
         htmlContent: customerHtml,
       }),
     });

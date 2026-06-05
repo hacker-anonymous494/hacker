@@ -17,15 +17,15 @@ export default function ContentManager() {
     sunday: { open: '16:00', close: '23:00', closed: false },
   })
   const [contactInfo, setContactInfo] = useState({
-    address: '42 Veranda Lane, New York, NY 10012',
+    address: '42 Trifilia Lane, New York, NY 10012',
     phone: '(212) 555-0142',
-    email: 'hello@verandabar.com',
-    instagram: 'https://instagram.com/verandabar',
-    facebook: 'https://facebook.com/verandabar',
-    twitter: 'https://twitter.com/verandabar',
+    email: 'hello@Trifiliabar.com',
+    instagram: 'https://instagram.com/Trifiliabar',
+    facebook: 'https://facebook.com/Trifiliabar',
+    twitter: 'https://twitter.com/Trifiliabar',
   })
   const [homepageHero, setHomepageHero] = useState({
-    title: 'Veranda',
+    title: 'Trifilia',
     subtitle: 'Wood‑fired artisan pizza & hand‑crafted cocktails',
     videoUrl: '/hero-video.mp4',
   })
@@ -53,7 +53,7 @@ export default function ContentManager() {
         .single()
       if (homeData) {
         setHomepageHero({
-          title: homeData.hero_title || 'Veranda',
+          title: homeData.hero_title || 'Trifilia',
           subtitle: homeData.hero_subtitle || '',
           videoUrl: homeData.hero_video_url || '/hero-video.mp4',
         })

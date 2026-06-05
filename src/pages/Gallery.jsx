@@ -42,7 +42,7 @@ export default function Gallery() {
           <h1 className="font-display text-4xl md:text-5xl mt-2 mb-4">Gallery</h1>
           <div className="w-20 h-0.5 bg-amber-500/50 mx-auto" />
           <p className="text-smoke-300 max-w-2xl mx-auto mt-4">
-            A glimpse into the Veranda experience – from wood‑fired pizzas to craft cocktails and intimate vibes.
+            A glimpse into the Trifilia experience – from wood‑fired pizzas to craft cocktails and intimate vibes.
           </p>
         </div>
 

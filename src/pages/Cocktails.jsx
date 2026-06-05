@@ -168,6 +168,6 @@ export default function Cocktails() {
 // Mock data fallback
 const mockCocktails = [
   { id: '1', name: 'Smoked Old Fashioned', description: 'Bourbon, demerara, angostura, smoked with cherry wood', price: 16, featured: true, tags: [], allergens: [], image_url: null },
-  { id: '2', name: 'Veranda Spritz', description: 'Aperol, prosecco, soda, orange wheel', price: 14, featured: true, tags: [], allergens: [], image_url: null },
+  { id: '2', name: 'Trifilia Spritz', description: 'Aperol, prosecco, soda, orange wheel', price: 14, featured: true, tags: [], allergens: [], image_url: null },
   { id: '3', name: 'Spicy Margarita', description: 'Tequila, lime, agave, jalapeño infusion', price: 15, featured: false, tags: ['spicy'], allergens: [], image_url: null },
 ]

@@ -15,12 +15,12 @@ const contactSchema = z.object({
 
 export default function Contact() {
   const [contactInfo, setContactInfo] = useState({
-    address: '42 Veranda Lane, New York, NY 10012',
+    address: '42 Trifilia Lane, New York, NY 10012',
     phone: '(212) 555-0142',
-    email: 'hello@verandabar.com',
-    instagram: 'https://instagram.com/verandabar',
-    facebook: 'https://facebook.com/verandabar',
-    twitter: 'https://twitter.com/verandabar',
+    email: 'hello@Trifiliabar.com',
+    instagram: 'https://instagram.com/Trifiliabar',
+    facebook: 'https://facebook.com/Trifiliabar',
+    twitter: 'https://twitter.com/Trifiliabar',
     hours: 'Mon–Thu 5pm–12am, Fri–Sat 5pm–2am, Sun 4pm–11pm',
   })
   const [loading, setLoading] = useState(true)
@@ -153,8 +153,8 @@ export default function Contact() {
             {/* Google Maps Embed */}
             <div className="glass rounded-2xl overflow-hidden">
               <iframe
-                src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.2219901290355!2d-74.00369368400567!3d40.70512937933058!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c25a316bb2c1e9%3A0xb8912c6c2e8e4b5!2s42+Veranda+Lane%2C+New+York%2C+NY+10012!5e0!3m2!1sen!2sus!4v1645123456789!5m2!1sen!2sus`}
-                width="100%" height="250" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Veranda location map"
+                src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.2219901290355!2d-74.00369368400567!3d40.70512937933058!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c25a316bb2c1e9%3A0xb8912c6c2e8e4b5!2s42+Trifilia+Lane%2C+New+York%2C+NY+10012!5e0!3m2!1sen!2sus!4v1645123456789!5m2!1sen!2sus`}
+                width="100%" height="250" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Trifilia location map"
               ></iframe>
             </div>
           </div>
