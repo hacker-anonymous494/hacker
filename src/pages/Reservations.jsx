@@ -276,15 +276,18 @@ export default function Reservations() {
 
       // 7. Send email notification (optional)
       try {
+        const emailPayload = {
+          ...data,
+          tables: selectedTableIds,
+          orderTotal,
+          orderItems: cartItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+          paymentCompleted: !!usedPaymentId,
+          paymentMethod: usedPaymentId ? 'PayPal' : 'Cash at venue',
+        };
         await fetch('/.netlify/functions/send-reservation-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...data,
-            tables: selectedTableIds,
-            orderTotal,
-            orderItems: cartItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
-          }),
+          body: JSON.stringify(emailPayload),
         });
       } catch (emailErr) {
         console.warn(emailErr);
